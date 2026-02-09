@@ -1,7 +1,7 @@
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use chrono::Local;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,14 +75,14 @@ pub async fn update_settings(payload: Settings) -> Result<(), String> {
 #[tauri::command]
 pub async fn get_starship_toml() -> Result<String, String> {
     let path = get_starship_config_path();
-    
+
     if !path.exists() {
         let dir = path.parent().unwrap();
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         fs::write(&path, "").map_err(|e| e.to_string())?;
         return Ok(String::new());
     }
-    
+
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
@@ -105,14 +105,14 @@ pub async fn apply_preset(toml_content: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn get_backup_list() -> Result<Vec<String>, String> {
     let backup_dir = get_config_dir().join("backups");
-    
+
     if !backup_dir.exists() {
         return Ok(Vec::new());
     }
-    
+
     let mut backups = Vec::new();
     let entries = fs::read_dir(&backup_dir).map_err(|e| e.to_string())?;
-    
+
     for entry in entries {
         if let Ok(entry) = entry {
             if let Some(name) = entry.file_name().to_str() {
@@ -122,7 +122,7 @@ pub async fn get_backup_list() -> Result<Vec<String>, String> {
             }
         }
     }
-    
+
     backups.sort_by(|a, b| b.cmp(a));
     Ok(backups)
 }
