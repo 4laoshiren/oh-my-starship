@@ -36,3 +36,7 @@ export async function deleteBackup(backupPath: string): Promise<void> {
 export async function createStarshipBackup(): Promise<string> {
   return invoke<string>('create_starship_backup');
 }
+
+export async function openExternal(url: string): Promise<void> {
+  return invoke<void>('open_external', { url });
+}

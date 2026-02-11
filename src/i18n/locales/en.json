@@ -184,7 +184,8 @@
         "styleDesc": "Style for the time display (e.g., bold yellow, #ff0000)",
         "use12hr": "Use 12-Hour Format",
         "use12hrDesc": "Use 12-hour time format with AM/PM",
-        "saveSuccess": "Time module saved"
+        "saveSuccess": "Time module saved",
+        "chronoStrftimeDoc": "chrono strftime doc"
       },
       "techStack": {
         "name": "Tech Stack",

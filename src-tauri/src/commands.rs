@@ -2,6 +2,8 @@ use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tauri::AppHandle;
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,4 +164,23 @@ pub async fn create_starship_backup() -> Result<String, String> {
     fs::copy(&starship_path, &backup_path).map_err(|e| e.to_string())?;
 
     Ok(backup_path.to_string_lossy().to_string())
+}
+
+// Copied from cc-switch/src-tauri/src/commands.rs
+// https://github.com/farion1231/cc-switch
+// Open external link
+// 打开外部链接
+#[tauri::command]
+pub async fn open_external(app: AppHandle, url: String) -> Result<bool, String> {
+    let url = if url.starts_with("http://") || url.starts_with("https://") {
+        url
+    } else {
+        format!("https://{url}")
+    };
+
+    app.opener()
+        .open_url(&url, None::<String>)
+        .map_err(|e| format!("打开链接失败: {e}"))?;
+
+    Ok(true)
 }

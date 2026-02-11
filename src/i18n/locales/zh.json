@@ -184,7 +184,8 @@
         "styleDesc": "时间显示的样式（例如：bold yellow, #ff0000）",
         "use12hr": "使用 12 小时制",
         "use12hrDesc": "使用带 AM/PM 的 12 小时时间格式",
-        "saveSuccess": "时间模块已保存"
+        "saveSuccess": "时间模块已保存",
+        "chronoStrftimeDoc": "chrono strftime 文档"
       },
       "techStack": {
         "name": "技术栈",

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ColorPickerInput } from '@/components/ui/color-picker-input';
 import { useStarshipToml, useSaveStarshipToml } from '@/lib/query';
 import { parseTomlSection, updateTomlSection } from '../toml-utils';
+import { openExternal } from '@/services/cmds';
 
 interface TimeFormData {
   disabled: boolean;
@@ -109,6 +110,8 @@ export function TimeModule() {
                 </li>
               ))}
             </ul>
+            {/* 链接：调用系统默认浏览器打开 chrono strftime 文档 */}
+            <p><Button variant="link" onClick={() => openExternal('https://docs.rs/chrono/0.4.7/chrono/format/strftime/index.html')}>{t('starship.modules.time.chronoStrftimeDoc')}</Button></p>
           </div>
         </div>
 
