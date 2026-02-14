@@ -6,18 +6,18 @@ import zh from './locales/zh.json';
 import zhTW from './locales/zh-TW.json';
 
 const resources = {
-  en: { translation: en },
-  zh: { translation: zh },
-  'zh-TW': { translation: zhTW },
+    en: { translation: en },
+    zh: { translation: zh },
+    'zh-TW': { translation: zhTW },
 };
 
 i18n.use(initReactI18next).init({
-  resources,
-  lng: localStorage.getItem('language') || 'zh',
-  fallbackLng: 'en',
-  interpolation: {
-    escapeValue: false,
-  },
+    resources,
+    lng: localStorage.getItem('language') || 'zh',
+    fallbackLng: 'en',
+    interpolation: {
+        escapeValue: false,
+    },
 });
 
 export default i18n;

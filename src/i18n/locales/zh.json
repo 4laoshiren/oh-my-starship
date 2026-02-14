@@ -1,211 +1,211 @@
 {
-  "common": {
-    "loading": "加载中...",
-    "save": "保存",
-    "reset": "重置",
-    "back": "返回",
-    "apply": "应用",
-    "active": "应用中",
-    "saving": "保存中...",
-    "saveChanges": "保存更改",
-    "cancel": "取消"
-  },
-  "colorPicker": {
-    "customColor": "自定义颜色 (Hex)",
-    "selectColor": "选择颜色...",
-    "apply": "应用"
-  },
-  "nav": {
-    "title": "Starship 配置",
-    "backups": "备份",
-    "starship": "Starship",
-    "settings": "设置"
-  },
-  "settings": {
-    "title": "设置",
-    "theme": "主题",
-    "themeColor": "主题颜色",
-    "language": "语言",
-    "themes": {
-      "light": "浅色",
-      "dark": "深色",
-      "system": "跟随系统"
+    "common": {
+        "loading": "加载中...",
+        "save": "保存",
+        "reset": "重置",
+        "back": "返回",
+        "apply": "应用",
+        "active": "应用中",
+        "saving": "保存中...",
+        "saveChanges": "保存更改",
+        "cancel": "取消"
     },
-    "themeColors": {
-      "zinc": "锌灰",
-      "slate": "岩灰",
-      "red": "红色",
-      "rose": "玫红",
-      "orange": "橙色",
-      "green": "绿色",
-      "blue": "蓝色",
-      "yellow": "黄色",
-      "violet": "紫色"
+    "colorPicker": {
+        "customColor": "自定义颜色 (Hex)",
+        "selectColor": "选择颜色...",
+        "apply": "应用"
     },
-    "languages": {
-      "en": "English",
-      "zh": "简体中文",
-      "zh-TW": "繁體中文"
-    }
-  },
-  "backups": {
-    "title": "备份",
-    "more": "更多",
-    "delete": "删除",
-    "apply": "应用",
-    "applySuccess": "备份应用成功",
-    "applyError": "备份应用失败",
-    "deleteSuccess": "备份删除成功",
-    "deleteError": "备份删除失败",
-    "noBackups": "未找到备份",
-    "rename": "重命名",
-    "renameTitle": "重命名备份",
-    "nameTitle": "命名备份",
-    "nameLabel": "备份名称",
-    "renameSuccess": "备份重命名成功",
-    "namePlaceholder": "输入备份名称"
-  },
-  "configEditor": {
-    "saveSuccess": "配置保存成功",
-    "saveFailed": "保存配置失败"
-  },
-  "starship": {
-    "title": "Starship 配置",
-    "backup": "备份",
-    "backupSuccess": "备份创建成功",
-    "backupError": "备份创建失败",
-    "tabs": {
-      "presets": "预设",
-      "modules": "模块",
-      "toml": "TOML 编辑器"
+    "nav": {
+        "title": "Starship 配置",
+        "backups": "备份",
+        "starship": "Starship",
+        "settings": "设置"
     },
-    "presets": {
-      "description": "选择一个预设来快速配置你的 Starship 提示符。当前配置将会自动备份。",
-      "applySuccess": "已应用 \"{{name}}\" 预设",
-      "applyFailed": "应用预设失败"
-    },
-    "toml": {
-      "placeholder": "# Starship 配置",
-      "saveSuccess": "配置已保存",
-      "saveFailed": "保存配置失败"
-    },
-    "modules": {
-      "character": {
-        "name": "字符",
-        "description": "提示符符号",
-        "title": "字符模块",
-        "subtitle": "配置出现在提示符开头的字符。",
-        "hideCharacter": "隐藏字符",
-        "hideDescription": "从提示符中隐藏字符模块",
-        "successSymbol": "成功符号",
-        "successSymbolDesc": "上一个命令成功时显示的符号",
-        "errorSymbol": "错误符号",
-        "errorSymbolDesc": "上一个命令失败时显示的符号",
-        "vimcmdSymbol": "Vim 命令符号",
-        "vimcmdSymbolDesc": "Vim 普通模式下显示的符号",
-        "vimcmdReplaceSymbol": "Vim 替换符号",
-        "vimcmdReplaceSymbolDesc": "Vim 替换模式下显示的符号",
-        "vimcmdVisualSymbol": "Vim 可视符号",
-        "vimcmdVisualSymbolDesc": "Vim 可视模式下显示的符号",
-        "saveSuccess": "字符模块已保存"
-      },
-      "directory": {
-        "name": "目录",
-        "description": "路径显示",
-        "title": "目录模块",
-        "subtitle": "配置当前目录路径在提示符中的显示方式。",
-        "hideDirectory": "隐藏目录",
-        "hideDescription": "从提示符中隐藏目录模块",
-        "truncationLength": "截断长度",
-        "truncationLengthDesc": "显示的父目录数量",
-        "truncationSymbol": "截断符号",
-        "truncationSymbolDesc": "用于表示路径被截断的符号",
-        "truncateToRepo": "截断到仓库根目录",
-        "truncateToRepoDesc": "截断到 git 仓库的根目录",
-        "style": "样式",
-        "styleDesc": "目录路径的样式",
-        "format": "格式",
-        "formatDesc": "目录显示的格式字符串",
-        "homeSymbol": "主目录符号",
-        "homeSymbolDesc": "用于表示主目录的符号",
-        "readOnlySymbol": "只读符号",
-        "readOnlySymbolDesc": "只读目录显示的符号",
-        "readOnlyStyle": "只读样式",
-        "readOnlyStyleDesc": "只读指示器的样式",
-        "saveSuccess": "目录模块已保存"
-      },
-      "git": {
-        "name": "Git",
-        "description": "分支和状态",
-        "title": "Git 模块",
-        "subtitle": "配置 git 信息在提示符中的显示方式。",
-        "branch": {
-          "tab": "Git 分支",
-          "hide": "隐藏 Git 分支",
-          "hideDesc": "从提示符中隐藏 git 分支",
-          "symbol": "符号",
-          "style": "样式",
-          "format": "格式",
-          "truncationLength": "截断长度",
-          "truncationSymbol": "截断符号",
-          "saveSuccess": "Git 分支模块已保存"
+    "settings": {
+        "title": "设置",
+        "theme": "主题",
+        "themeColor": "主题颜色",
+        "language": "语言",
+        "themes": {
+            "light": "浅色",
+            "dark": "深色",
+            "system": "跟随系统"
         },
-        "status": {
-          "tab": "Git 状态",
-          "hide": "隐藏 Git 状态",
-          "hideDesc": "从提示符中隐藏 git 状态",
-          "style": "样式",
-          "format": "格式",
-          "ahead": "领先",
-          "behind": "落后",
-          "diverged": "分叉",
-          "conflicted": "冲突",
-          "untracked": "未跟踪",
-          "stashed": "暂存",
-          "modified": "已修改",
-          "staged": "已暂存",
-          "renamed": "已重命名",
-          "deleted": "已删除",
-          "saveSuccess": "Git 状态模块已保存"
+        "themeColors": {
+            "zinc": "锌灰",
+            "slate": "岩灰",
+            "red": "红色",
+            "rose": "玫红",
+            "orange": "橙色",
+            "green": "绿色",
+            "blue": "蓝色",
+            "yellow": "黄色",
+            "violet": "紫色"
+        },
+        "languages": {
+            "en": "English",
+            "zh": "简体中文",
+            "zh-TW": "繁體中文"
         }
-      },
-      "time": {
-        "name": "时间",
-        "description": "时间显示",
-        "title": "时间模块",
-        "subtitle": "配置提示符中的时间显示。",
-        "hideTime": "隐藏时间",
-        "hideDescription": "时间模块默认禁用。启用它以显示当前时间。",
-        "timeFormat": "时间格式",
-        "timeFormatDesc": "使用 strftime 语法的格式字符串。常用格式：",
-        "displayFormat": "显示格式",
-        "displayFormatDesc": "时间显示的格式字符串。使用 $time 表示格式化后的时间。",
-        "style": "样式",
-        "styleDesc": "时间显示的样式（例如：bold yellow, #ff0000）",
-        "use12hr": "使用 12 小时制",
-        "use12hrDesc": "使用带 AM/PM 的 12 小时时间格式",
-        "saveSuccess": "时间模块已保存",
-        "chronoStrftimeDoc": "chrono strftime 文档"
-      },
-      "techStack": {
-        "name": "技术栈",
-        "description": "运行时版本",
-        "title": "技术栈模块",
-        "subtitle": "配置编程语言版本在提示符中的显示方式。",
-        "disable": "禁用 {{name}} 模块",
-        "disableDesc": "从提示符中隐藏 {{name}} 版本",
-        "symbol": "符号",
-        "symbolDesc": "显示在版本前的符号",
-        "style": "样式",
-        "styleDesc": "模块的样式（例如：bold green, #ff0000）",
-        "format": "格式",
-        "formatDesc": "模块显示的格式字符串",
-        "versionFormat": "版本格式",
-        "versionFormatDesc": "版本号的格式字符串",
-        "saveButton": "保存更改",
-        "saveSuccess": "{{name}} 模块已保存"
-      },
-      "saveFailed": "保存失败：{{message}}"
+    },
+    "backups": {
+        "title": "备份",
+        "more": "更多",
+        "delete": "删除",
+        "apply": "应用",
+        "applySuccess": "备份应用成功",
+        "applyError": "备份应用失败",
+        "deleteSuccess": "备份删除成功",
+        "deleteError": "备份删除失败",
+        "noBackups": "未找到备份",
+        "rename": "重命名",
+        "renameTitle": "重命名备份",
+        "nameTitle": "命名备份",
+        "nameLabel": "备份名称",
+        "renameSuccess": "备份重命名成功",
+        "namePlaceholder": "输入备份名称"
+    },
+    "configEditor": {
+        "saveSuccess": "配置保存成功",
+        "saveFailed": "保存配置失败"
+    },
+    "starship": {
+        "title": "Starship 配置",
+        "backup": "备份",
+        "backupSuccess": "备份创建成功",
+        "backupError": "备份创建失败",
+        "tabs": {
+            "presets": "预设",
+            "modules": "模块",
+            "toml": "TOML 编辑器"
+        },
+        "presets": {
+            "description": "选择一个预设来快速配置你的 Starship 提示符。当前配置将会自动备份。",
+            "applySuccess": "已应用 \"{{name}}\" 预设",
+            "applyFailed": "应用预设失败"
+        },
+        "toml": {
+            "placeholder": "# Starship 配置",
+            "saveSuccess": "配置已保存",
+            "saveFailed": "保存配置失败"
+        },
+        "modules": {
+            "character": {
+                "name": "字符",
+                "description": "提示符符号",
+                "title": "字符模块",
+                "subtitle": "配置出现在提示符开头的字符。",
+                "hideCharacter": "隐藏字符",
+                "hideDescription": "从提示符中隐藏字符模块",
+                "successSymbol": "成功符号",
+                "successSymbolDesc": "上一个命令成功时显示的符号",
+                "errorSymbol": "错误符号",
+                "errorSymbolDesc": "上一个命令失败时显示的符号",
+                "vimcmdSymbol": "Vim 命令符号",
+                "vimcmdSymbolDesc": "Vim 普通模式下显示的符号",
+                "vimcmdReplaceSymbol": "Vim 替换符号",
+                "vimcmdReplaceSymbolDesc": "Vim 替换模式下显示的符号",
+                "vimcmdVisualSymbol": "Vim 可视符号",
+                "vimcmdVisualSymbolDesc": "Vim 可视模式下显示的符号",
+                "saveSuccess": "字符模块已保存"
+            },
+            "directory": {
+                "name": "目录",
+                "description": "路径显示",
+                "title": "目录模块",
+                "subtitle": "配置当前目录路径在提示符中的显示方式。",
+                "hideDirectory": "隐藏目录",
+                "hideDescription": "从提示符中隐藏目录模块",
+                "truncationLength": "截断长度",
+                "truncationLengthDesc": "显示的父目录数量",
+                "truncationSymbol": "截断符号",
+                "truncationSymbolDesc": "用于表示路径被截断的符号",
+                "truncateToRepo": "截断到仓库根目录",
+                "truncateToRepoDesc": "截断到 git 仓库的根目录",
+                "style": "样式",
+                "styleDesc": "目录路径的样式",
+                "format": "格式",
+                "formatDesc": "目录显示的格式字符串",
+                "homeSymbol": "主目录符号",
+                "homeSymbolDesc": "用于表示主目录的符号",
+                "readOnlySymbol": "只读符号",
+                "readOnlySymbolDesc": "只读目录显示的符号",
+                "readOnlyStyle": "只读样式",
+                "readOnlyStyleDesc": "只读指示器的样式",
+                "saveSuccess": "目录模块已保存"
+            },
+            "git": {
+                "name": "Git",
+                "description": "分支和状态",
+                "title": "Git 模块",
+                "subtitle": "配置 git 信息在提示符中的显示方式。",
+                "branch": {
+                    "tab": "Git 分支",
+                    "hide": "隐藏 Git 分支",
+                    "hideDesc": "从提示符中隐藏 git 分支",
+                    "symbol": "符号",
+                    "style": "样式",
+                    "format": "格式",
+                    "truncationLength": "截断长度",
+                    "truncationSymbol": "截断符号",
+                    "saveSuccess": "Git 分支模块已保存"
+                },
+                "status": {
+                    "tab": "Git 状态",
+                    "hide": "隐藏 Git 状态",
+                    "hideDesc": "从提示符中隐藏 git 状态",
+                    "style": "样式",
+                    "format": "格式",
+                    "ahead": "领先",
+                    "behind": "落后",
+                    "diverged": "分叉",
+                    "conflicted": "冲突",
+                    "untracked": "未跟踪",
+                    "stashed": "暂存",
+                    "modified": "已修改",
+                    "staged": "已暂存",
+                    "renamed": "已重命名",
+                    "deleted": "已删除",
+                    "saveSuccess": "Git 状态模块已保存"
+                }
+            },
+            "time": {
+                "name": "时间",
+                "description": "时间显示",
+                "title": "时间模块",
+                "subtitle": "配置提示符中的时间显示。",
+                "hideTime": "隐藏时间",
+                "hideDescription": "时间模块默认禁用。启用它以显示当前时间。",
+                "timeFormat": "时间格式",
+                "timeFormatDesc": "使用 strftime 语法的格式字符串。常用格式：",
+                "displayFormat": "显示格式",
+                "displayFormatDesc": "时间显示的格式字符串。使用 $time 表示格式化后的时间。",
+                "style": "样式",
+                "styleDesc": "时间显示的样式（例如：bold yellow, #ff0000）",
+                "use12hr": "使用 12 小时制",
+                "use12hrDesc": "使用带 AM/PM 的 12 小时时间格式",
+                "saveSuccess": "时间模块已保存",
+                "chronoStrftimeDoc": "chrono strftime 文档"
+            },
+            "techStack": {
+                "name": "技术栈",
+                "description": "运行时版本",
+                "title": "技术栈模块",
+                "subtitle": "配置编程语言版本在提示符中的显示方式。",
+                "disable": "禁用 {{name}} 模块",
+                "disableDesc": "从提示符中隐藏 {{name}} 版本",
+                "symbol": "符号",
+                "symbolDesc": "显示在版本前的符号",
+                "style": "样式",
+                "styleDesc": "模块的样式（例如：bold green, #ff0000）",
+                "format": "格式",
+                "formatDesc": "模块显示的格式字符串",
+                "versionFormat": "版本格式",
+                "versionFormatDesc": "版本号的格式字符串",
+                "saveButton": "保存更改",
+                "saveSuccess": "{{name}} 模块已保存"
+            },
+            "saveFailed": "保存失败：{{message}}"
+        }
     }
-  }
 }

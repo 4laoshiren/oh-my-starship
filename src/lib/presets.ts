@@ -3,11 +3,11 @@
 import type { StarshipPreset } from '@/types';
 
 export const presets: StarshipPreset[] = [
-  {
-    id: 'nerd-font-symbols',
-    name: 'Nerd Font Symbols',
-    description: 'Changes symbols for each module to use Nerd Font symbols',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    {
+        id: 'nerd-font-symbols',
+        name: 'Nerd Font Symbols',
+        description: 'Changes symbols for each module to use Nerd Font symbols',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 [aws]
 symbol = " "
@@ -212,12 +212,12 @@ symbol = " "
 
 [zig]
 symbol = " "`,
-  },
-  {
-    id: 'pastel-powerline',
-    name: 'Pastel Powerline',
-    description: 'A colorful powerline-style prompt with pastel colors',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'pastel-powerline',
+        name: 'Pastel Powerline',
+        description: 'A colorful powerline-style prompt with pastel colors',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
 [](#9A348E)\
@@ -368,12 +368,12 @@ disabled = false
 time_format = "%R"
 style = "bg:#33658A"
 format = '[ ♥ $time ]($style)'`,
-  },
-  {
-    id: 'tokyo-night',
-    name: 'Tokyo Night',
-    description: 'Inspired by tokyo-night-vscode-theme with deep blues',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'tokyo-night',
+        name: 'Tokyo Night',
+        description: 'Inspired by tokyo-night-vscode-theme with deep blues',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
 [░▒▓](#a3aed2)\
@@ -439,12 +439,12 @@ disabled = false
 time_format = "%R"
 style = "bg:#1d2230"
 format = '[[  $time ](fg:#a0a9cb bg:#1d2230)]($style)'`,
-  },
-  {
-    id: 'gruvbox-rainbow',
-    name: 'Gruvbox Rainbow',
-    description: 'Warm earthy colors inspired by Gruvbox theme',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'gruvbox-rainbow',
+        name: 'Gruvbox Rainbow',
+        description: 'Warm earthy colors inspired by Gruvbox theme',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
 [](#d65d0e)\
@@ -625,12 +625,12 @@ vimcmd_symbol = '[](bold fg:#98971a)'
 vimcmd_replace_one_symbol = '[](bold fg:#b16286)'
 vimcmd_replace_symbol = '[](bold fg:#b16286)'
 vimcmd_visual_symbol = '[](bold fg:#d79921)'`,
-  },
-  {
-    id: 'bracketed-segments',
-    name: 'Bracketed Segments',
-    description: 'Shows all segments in brackets instead of default wording',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'bracketed-segments',
+        name: 'Bracketed Segments',
+        description: 'Shows all segments in brackets instead of default wording',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 [aws]
 format = '\\[[$symbol($profile)(\\($region\\))(\\[$duration\\])]($style)\\]'
@@ -685,12 +685,12 @@ format = '\\[[$time]($style)\\]'
 
 [username]
 format = '\\[[$user]($style)\\]'`,
-  },
-  {
-    id: 'plain-text',
-    name: 'Plain Text Symbols',
-    description: 'Uses plain text instead of special characters or icons',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'plain-text',
+        name: 'Plain Text Symbols',
+        description: 'Uses plain text instead of special characters or icons',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 continuation_prompt = "[.](#5C6370) "
 
@@ -769,12 +769,12 @@ symbol = "swift "
 
 [terraform]
 symbol = "terraform "`,
-  },
-  {
-    id: 'pure-preset',
-    name: 'Pure',
-    description: 'Emulates the look and behavior of Pure prompt',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'pure-preset',
+        name: 'Pure',
+        description: 'Emulates the look and behavior of Pure prompt',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
 $username\\
@@ -824,12 +824,12 @@ format = "[$virtualenv]($style) "
 style = "#5C6370"
 detect_extensions = []
 detect_files = []`,
-  },
-  {
-    id: 'no-runtime-versions',
-    name: 'No Runtime Versions',
-    description: 'Hides version numbers for all language runtimes',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'no-runtime-versions',
+        name: 'No Runtime Versions',
+        description: 'Hides version numbers for all language runtimes',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 [bun]
 format = "via [$symbol]($style)"
@@ -920,12 +920,12 @@ format = 'via [$symbol]($style)'
 
 [zig]
 format = 'via [$symbol]($style)'`,
-  },
-  {
-    id: 'no-empty-icons',
-    name: 'No Empty Icons',
-    description: 'Does not show icons if the toolset is not found',
-    toml: `"$schema" = 'https://starship.rs/config-schema.json'
+    },
+    {
+        id: 'no-empty-icons',
+        name: 'No Empty Icons',
+        description: 'Does not show icons if the toolset is not found',
+        toml: `"$schema" = 'https://starship.rs/config-schema.json'
 
 [aws]
 format = 'on [$symbol($profile )(\\($region\\) )(\\[$duration\\] )]($style)'
@@ -1044,10 +1044,9 @@ format = 'via [$symbol]($style)'
 
 [zig]
 format = 'via [$symbol]($style)'`,
-  },
+    },
 ];
 
 export function getPresetById(id: string): StarshipPreset | undefined {
-  return presets.find((p) => p.id === id);
+    return presets.find((p) => p.id === id);
 }
-

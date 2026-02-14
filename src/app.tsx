@@ -9,21 +9,21 @@ import { AppProvider } from '@/app-context';
 import type { Settings } from '@/types';
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: false,
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false,
+            retry: false,
+        },
     },
-  },
 });
 
 export function App({ settings }: { settings: Settings }) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppProvider settings={settings}>
-        <RouterProvider router={router} />
-        <Toaster />
-      </AppProvider>
-    </QueryClientProvider>
-  );
+    return (
+        <QueryClientProvider client={queryClient}>
+            <AppProvider settings={settings}>
+                <RouterProvider router={router} />
+                <Toaster />
+            </AppProvider>
+        </QueryClientProvider>
+    );
 }

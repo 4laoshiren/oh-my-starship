@@ -1,211 +1,211 @@
 {
-  "common": {
-    "loading": "Loading...",
-    "save": "Save",
-    "reset": "Reset",
-    "back": "Back",
-    "apply": "Apply",
-    "active": "Active",
-    "saving": "Saving...",
-    "saveChanges": "Save Changes",
-    "cancel": "Cancel"
-  },
-  "colorPicker": {
-    "customColor": "Custom Color (Hex)",
-    "selectColor": "Select color...",
-    "apply": "Apply"
-  },
-  "nav": {
-    "title": "Starship Config",
-    "backups": "Backups",
-    "starship": "Starship",
-    "settings": "Settings"
-  },
-  "settings": {
-    "title": "Settings",
-    "theme": "Theme",
-    "themeColor": "Theme Color",
-    "language": "Language",
-    "themes": {
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
+    "common": {
+        "loading": "Loading...",
+        "save": "Save",
+        "reset": "Reset",
+        "back": "Back",
+        "apply": "Apply",
+        "active": "Active",
+        "saving": "Saving...",
+        "saveChanges": "Save Changes",
+        "cancel": "Cancel"
     },
-    "themeColors": {
-      "zinc": "Zinc",
-      "slate": "Slate",
-      "red": "Red",
-      "rose": "Rose",
-      "orange": "Orange",
-      "green": "Green",
-      "blue": "Blue",
-      "yellow": "Yellow",
-      "violet": "Violet"
+    "colorPicker": {
+        "customColor": "Custom Color (Hex)",
+        "selectColor": "Select color...",
+        "apply": "Apply"
     },
-    "languages": {
-      "en": "English",
-      "zh": "简体中文",
-      "zh-TW": "繁體中文"
-    }
-  },
-  "backups": {
-    "title": "Backups",
-    "more": "More",
-    "delete": "Delete",
-    "apply": "Apply",
-    "applySuccess": "Backup applied successfully",
-    "applyError": "Failed to apply backup",
-    "deleteSuccess": "Backup deleted successfully",
-    "deleteError": "Failed to delete backup",
-    "noBackups": "No backups found",
-    "rename": "Rename",
-    "renameTitle": "Rename Backup",
-    "nameTitle": "Name Backup",
-    "nameLabel": "Backup Name",
-    "renameSuccess": "Backup renamed successfully",
-    "namePlaceholder": "Enter backup name"
-  },
-  "configEditor": {
-    "saveSuccess": "Configuration saved successfully",
-    "saveFailed": "Failed to save configuration"
-  },
-  "starship": {
-    "title": "Starship Configuration",
-    "backup": "Backup",
-    "backupSuccess": "Backup created successfully",
-    "backupError": "Failed to create backup",
-    "tabs": {
-      "presets": "Presets",
-      "modules": "Modules",
-      "toml": "TOML Editor"
+    "nav": {
+        "title": "Starship Config",
+        "backups": "Backups",
+        "starship": "Starship",
+        "settings": "Settings"
     },
-    "presets": {
-      "description": "Choose a preset to quickly configure your Starship prompt. Your current configuration will be backed up automatically.",
-      "applySuccess": "Applied \"{{name}}\" preset",
-      "applyFailed": "Failed to apply preset"
-    },
-    "toml": {
-      "placeholder": "# Starship configuration",
-      "saveSuccess": "Configuration saved",
-      "saveFailed": "Failed to save configuration"
-    },
-    "modules": {
-      "character": {
-        "name": "Character",
-        "description": "Prompt symbol",
-        "title": "Character Module",
-        "subtitle": "Configure the prompt character that appears at the beginning of your prompt.",
-        "hideCharacter": "Hide Character",
-        "hideDescription": "Hide the character module from your prompt",
-        "successSymbol": "Success Symbol",
-        "successSymbolDesc": "Symbol shown when the previous command succeeded",
-        "errorSymbol": "Error Symbol",
-        "errorSymbolDesc": "Symbol shown when the previous command failed",
-        "vimcmdSymbol": "Vim Command Symbol",
-        "vimcmdSymbolDesc": "Symbol shown in vim normal mode",
-        "vimcmdReplaceSymbol": "Vim Replace Symbol",
-        "vimcmdReplaceSymbolDesc": "Symbol shown in vim replace mode",
-        "vimcmdVisualSymbol": "Vim Visual Symbol",
-        "vimcmdVisualSymbolDesc": "Symbol shown in vim visual mode",
-        "saveSuccess": "Character module saved"
-      },
-      "directory": {
-        "name": "Directory",
-        "description": "Path display",
-        "title": "Directory Module",
-        "subtitle": "Configure how the current directory path is displayed in your prompt.",
-        "hideDirectory": "Hide Directory",
-        "hideDescription": "Hide the directory module from your prompt",
-        "truncationLength": "Truncation Length",
-        "truncationLengthDesc": "Number of parent directories to show",
-        "truncationSymbol": "Truncation Symbol",
-        "truncationSymbolDesc": "Symbol used to indicate truncated paths",
-        "truncateToRepo": "Truncate to Repo Root",
-        "truncateToRepoDesc": "Truncate to the root of the git repository",
-        "style": "Style",
-        "styleDesc": "Style for the directory path",
-        "format": "Format",
-        "formatDesc": "Format string for the directory display",
-        "homeSymbol": "Home Symbol",
-        "homeSymbolDesc": "Symbol used to represent the home directory",
-        "readOnlySymbol": "Read-Only Symbol",
-        "readOnlySymbolDesc": "Symbol shown for read-only directories",
-        "readOnlyStyle": "Read-Only Style",
-        "readOnlyStyleDesc": "Style for the read-only indicator",
-        "saveSuccess": "Directory module saved"
-      },
-      "git": {
-        "name": "Git",
-        "description": "Branch and status",
-        "title": "Git Module",
-        "subtitle": "Configure how git information is displayed in your prompt.",
-        "branch": {
-          "tab": "Git Branch",
-          "hide": "Hide Git Branch",
-          "hideDesc": "Hide git branch from your prompt",
-          "symbol": "Symbol",
-          "style": "Style",
-          "format": "Format",
-          "truncationLength": "Truncation Length",
-          "truncationSymbol": "Truncation Symbol",
-          "saveSuccess": "Git branch module saved"
+    "settings": {
+        "title": "Settings",
+        "theme": "Theme",
+        "themeColor": "Theme Color",
+        "language": "Language",
+        "themes": {
+            "light": "Light",
+            "dark": "Dark",
+            "system": "System"
         },
-        "status": {
-          "tab": "Git Status",
-          "hide": "Hide Git Status",
-          "hideDesc": "Hide git status from your prompt",
-          "style": "Style",
-          "format": "Format",
-          "ahead": "Ahead",
-          "behind": "Behind",
-          "diverged": "Diverged",
-          "conflicted": "Conflicted",
-          "untracked": "Untracked",
-          "stashed": "Stashed",
-          "modified": "Modified",
-          "staged": "Staged",
-          "renamed": "Renamed",
-          "deleted": "Deleted",
-          "saveSuccess": "Git status module saved"
+        "themeColors": {
+            "zinc": "Zinc",
+            "slate": "Slate",
+            "red": "Red",
+            "rose": "Rose",
+            "orange": "Orange",
+            "green": "Green",
+            "blue": "Blue",
+            "yellow": "Yellow",
+            "violet": "Violet"
+        },
+        "languages": {
+            "en": "English",
+            "zh": "简体中文",
+            "zh-TW": "繁體中文"
         }
-      },
-      "time": {
-        "name": "Time",
-        "description": "Time display",
-        "title": "Time Module",
-        "subtitle": "Configure the time display in your prompt.",
-        "hideTime": "Hide Time",
-        "hideDescription": "The time module is disabled by default. Enable it to show the current time.",
-        "timeFormat": "Time Format",
-        "timeFormatDesc": "Format string using strftime syntax. Common formats:",
-        "displayFormat": "Display Format",
-        "displayFormatDesc": "Format string for the time display. Use $time for the formatted time.",
-        "style": "Style",
-        "styleDesc": "Style for the time display (e.g., bold yellow, #ff0000)",
-        "use12hr": "Use 12-Hour Format",
-        "use12hrDesc": "Use 12-hour time format with AM/PM",
-        "saveSuccess": "Time module saved",
-        "chronoStrftimeDoc": "chrono strftime doc"
-      },
-      "techStack": {
-        "name": "Tech Stack",
-        "description": "Runtime versions",
-        "title": "Tech Stack Modules",
-        "subtitle": "Configure how programming language versions are displayed in your prompt.",
-        "disable": "Disable {{name}} Module",
-        "disableDesc": "Hide {{name}} version from your prompt",
-        "symbol": "Symbol",
-        "symbolDesc": "Symbol displayed before the version",
-        "style": "Style",
-        "styleDesc": "Style for the module (e.g., bold green, #ff0000)",
-        "format": "Format",
-        "formatDesc": "Format string for the module display",
-        "versionFormat": "Version Format",
-        "versionFormatDesc": "Format string for the version number",
-        "saveButton": "Save Changes",
-        "saveSuccess": "{{name}} module saved"
-      },
-      "saveFailed": "Failed to save: {{message}}"
+    },
+    "backups": {
+        "title": "Backups",
+        "more": "More",
+        "delete": "Delete",
+        "apply": "Apply",
+        "applySuccess": "Backup applied successfully",
+        "applyError": "Failed to apply backup",
+        "deleteSuccess": "Backup deleted successfully",
+        "deleteError": "Failed to delete backup",
+        "noBackups": "No backups found",
+        "rename": "Rename",
+        "renameTitle": "Rename Backup",
+        "nameTitle": "Name Backup",
+        "nameLabel": "Backup Name",
+        "renameSuccess": "Backup renamed successfully",
+        "namePlaceholder": "Enter backup name"
+    },
+    "configEditor": {
+        "saveSuccess": "Configuration saved successfully",
+        "saveFailed": "Failed to save configuration"
+    },
+    "starship": {
+        "title": "Starship Configuration",
+        "backup": "Backup",
+        "backupSuccess": "Backup created successfully",
+        "backupError": "Failed to create backup",
+        "tabs": {
+            "presets": "Presets",
+            "modules": "Modules",
+            "toml": "TOML Editor"
+        },
+        "presets": {
+            "description": "Choose a preset to quickly configure your Starship prompt. Your current configuration will be backed up automatically.",
+            "applySuccess": "Applied \"{{name}}\" preset",
+            "applyFailed": "Failed to apply preset"
+        },
+        "toml": {
+            "placeholder": "# Starship configuration",
+            "saveSuccess": "Configuration saved",
+            "saveFailed": "Failed to save configuration"
+        },
+        "modules": {
+            "character": {
+                "name": "Character",
+                "description": "Prompt symbol",
+                "title": "Character Module",
+                "subtitle": "Configure the prompt character that appears at the beginning of your prompt.",
+                "hideCharacter": "Hide Character",
+                "hideDescription": "Hide the character module from your prompt",
+                "successSymbol": "Success Symbol",
+                "successSymbolDesc": "Symbol shown when the previous command succeeded",
+                "errorSymbol": "Error Symbol",
+                "errorSymbolDesc": "Symbol shown when the previous command failed",
+                "vimcmdSymbol": "Vim Command Symbol",
+                "vimcmdSymbolDesc": "Symbol shown in vim normal mode",
+                "vimcmdReplaceSymbol": "Vim Replace Symbol",
+                "vimcmdReplaceSymbolDesc": "Symbol shown in vim replace mode",
+                "vimcmdVisualSymbol": "Vim Visual Symbol",
+                "vimcmdVisualSymbolDesc": "Symbol shown in vim visual mode",
+                "saveSuccess": "Character module saved"
+            },
+            "directory": {
+                "name": "Directory",
+                "description": "Path display",
+                "title": "Directory Module",
+                "subtitle": "Configure how the current directory path is displayed in your prompt.",
+                "hideDirectory": "Hide Directory",
+                "hideDescription": "Hide the directory module from your prompt",
+                "truncationLength": "Truncation Length",
+                "truncationLengthDesc": "Number of parent directories to show",
+                "truncationSymbol": "Truncation Symbol",
+                "truncationSymbolDesc": "Symbol used to indicate truncated paths",
+                "truncateToRepo": "Truncate to Repo Root",
+                "truncateToRepoDesc": "Truncate to the root of the git repository",
+                "style": "Style",
+                "styleDesc": "Style for the directory path",
+                "format": "Format",
+                "formatDesc": "Format string for the directory display",
+                "homeSymbol": "Home Symbol",
+                "homeSymbolDesc": "Symbol used to represent the home directory",
+                "readOnlySymbol": "Read-Only Symbol",
+                "readOnlySymbolDesc": "Symbol shown for read-only directories",
+                "readOnlyStyle": "Read-Only Style",
+                "readOnlyStyleDesc": "Style for the read-only indicator",
+                "saveSuccess": "Directory module saved"
+            },
+            "git": {
+                "name": "Git",
+                "description": "Branch and status",
+                "title": "Git Module",
+                "subtitle": "Configure how git information is displayed in your prompt.",
+                "branch": {
+                    "tab": "Git Branch",
+                    "hide": "Hide Git Branch",
+                    "hideDesc": "Hide git branch from your prompt",
+                    "symbol": "Symbol",
+                    "style": "Style",
+                    "format": "Format",
+                    "truncationLength": "Truncation Length",
+                    "truncationSymbol": "Truncation Symbol",
+                    "saveSuccess": "Git branch module saved"
+                },
+                "status": {
+                    "tab": "Git Status",
+                    "hide": "Hide Git Status",
+                    "hideDesc": "Hide git status from your prompt",
+                    "style": "Style",
+                    "format": "Format",
+                    "ahead": "Ahead",
+                    "behind": "Behind",
+                    "diverged": "Diverged",
+                    "conflicted": "Conflicted",
+                    "untracked": "Untracked",
+                    "stashed": "Stashed",
+                    "modified": "Modified",
+                    "staged": "Staged",
+                    "renamed": "Renamed",
+                    "deleted": "Deleted",
+                    "saveSuccess": "Git status module saved"
+                }
+            },
+            "time": {
+                "name": "Time",
+                "description": "Time display",
+                "title": "Time Module",
+                "subtitle": "Configure the time display in your prompt.",
+                "hideTime": "Hide Time",
+                "hideDescription": "The time module is disabled by default. Enable it to show the current time.",
+                "timeFormat": "Time Format",
+                "timeFormatDesc": "Format string using strftime syntax. Common formats:",
+                "displayFormat": "Display Format",
+                "displayFormatDesc": "Format string for the time display. Use $time for the formatted time.",
+                "style": "Style",
+                "styleDesc": "Style for the time display (e.g., bold yellow, #ff0000)",
+                "use12hr": "Use 12-Hour Format",
+                "use12hrDesc": "Use 12-hour time format with AM/PM",
+                "saveSuccess": "Time module saved",
+                "chronoStrftimeDoc": "chrono strftime doc"
+            },
+            "techStack": {
+                "name": "Tech Stack",
+                "description": "Runtime versions",
+                "title": "Tech Stack Modules",
+                "subtitle": "Configure how programming language versions are displayed in your prompt.",
+                "disable": "Disable {{name}} Module",
+                "disableDesc": "Hide {{name}} version from your prompt",
+                "symbol": "Symbol",
+                "symbolDesc": "Symbol displayed before the version",
+                "style": "Style",
+                "styleDesc": "Style for the module (e.g., bold green, #ff0000)",
+                "format": "Format",
+                "formatDesc": "Format string for the module display",
+                "versionFormat": "Version Format",
+                "versionFormatDesc": "Format string for the version number",
+                "saveButton": "Save Changes",
+                "saveSuccess": "{{name}} module saved"
+            },
+            "saveFailed": "Failed to save: {{message}}"
+        }
     }
-  }
 }
