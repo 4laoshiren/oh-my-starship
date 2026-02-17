@@ -15,7 +15,7 @@ Primary goals during refactor:
 
 ## Target Tech Stack (Vue Refactor)
 
-- Frontend: Vue 3 + TypeScript + Vite
+- Frontend: Vue 3 + JavaScript + Vite
 - Router: Vue Router 4
 - State: Pinia
 - Data Fetching: @tanstack/vue-query
@@ -50,26 +50,26 @@ pnpm format:check
 # Fix format
 pnpm format:write
 
-# Type check
-pnpm tsc --noEmit
+# Code check
+pnpm ui:build
 ```
 
 ## Target Frontend Structure
 
 Use this structure for the Vue migration:
 
-- `src/main.ts` - Vue app entry
+- `src/main.js` - Vue app entry
 - `src/App.vue` - root component
-- `src/router/index.ts` - route definitions
+- `src/router/index.js` - route definitions
 - `src/stores/` - Pinia stores
 - `src/composables/` - reusable Vue composables
-- `src/services/api.ts` - domain-level service layer
-- `src/services/cmds.ts` - Tauri invoke wrappers
+- `src/services/api.js` - domain-level service layer
+- `src/services/cmds.js` - Tauri invoke wrappers
 - `src/views/` - route pages
 - `src/components/` - shared Vue components
 - `src/components/ui/` - reusable UI primitives
 - `src/i18n/` - localization setup and locale files
-- `src/types.ts` - shared TypeScript types
+- `src/types.js` - shared JavaScript types
 
 ## Backend (Tauri/Rust) Structure
 
@@ -81,10 +81,10 @@ Rust command contracts should remain stable while frontend is being migrated.
 
 ## Architecture Rules
 
-1. Use Vue SFC with `<script setup lang="ts">` by default.
+1. Use Vue SFC with `<script setup">` by default.
 2. Do not introduce new React code for new features.
 3. Migrate feature-by-feature (route-by-route), and keep each migrated feature fully working.
-4. Keep Tauri command calls centralized in `src/services/cmds.ts`.
+4. Keep Tauri command calls centralized in `src/services/cmds.js`.
 5. Keep async server/state logic in composables or Vue Query hooks, not in template-heavy components.
 6. Keep validation on the frontend before write/save operations.
 7. Preserve i18n keys and user-visible behavior unless change is requested.
@@ -105,14 +105,14 @@ Rust command contracts should remain stable while frontend is being migrated.
 
 ## Code Principles
 
-- Keep TypeScript strict and explicit at module boundaries.
+- Keep JavaScript strict and explicit at module boundaries.
 - Use named exports for utilities and services.
 - Keep side effects isolated in composables/services.
 - Avoid giant components; split by responsibility when needed.
 - Maintain readable naming for Tauri commands and frontend actions.
-- Do not use `pnpm tauri dev` as a replacement for type check; run `pnpm tsc --noEmit`.
+- Do not use `pnpm tauri dev` as a replacement for code check; run `pnpm ui:build`.
 - Do not use any `export default` or  `export const`. Only use `export`.
-- Do not use `index.ts` to export components uniformly. Only export components at the end of each component file.
+- Do not use `index.js` to export components uniformly. Only export components at the end of each component file.
 - Variants and method should be named using snake_case. Classes should be named using CamelCase.
 - Always use `const props = defineProps([x, y])` while using defineProps. Always use `props.x` while using prop.
 - Always use `reactive` instead of `ref`. While using 'reactive', always follow this template: `const state = reactive({})`. Always use `state.variants` while using variants defined by reactive.
