@@ -6,7 +6,6 @@ target/
 .env
 .env.*
 !.env.example
-CLAUDE.md
 .agents/
 .claude/
 .codex/
