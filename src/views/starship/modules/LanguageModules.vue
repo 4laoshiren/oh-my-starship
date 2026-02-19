@@ -1,18 +1,13 @@
 <script setup>
 import { reactive, watch, computed } from 'vue';
-import { toast } from 'vue-sonner';
 import { useI18n } from 'vue-i18n';
-import Input from '@/components/ui/Input.vue';
-import Label from '@/components/ui/Label.vue';
-import Switch from '@/components/ui/Switch.vue';
-import Button from '@/components/ui/Button.vue';
 import ColorPickerInput from '@/components/ui/ColorPickerInput.vue';
 import StarshipLayout from '@/views/starship/StarshipLayout.vue';
 import { use_starship_toml, use_save_starship_toml } from '@/composables/use-starship';
 import { parse_toml_section, update_toml_section } from '@/lib/toml-utils';
-import { cn } from '@/lib/utils';
 
 const { t } = useI18n();
+const toast = useToast();
 const { data: toml, isLoading: is_loading } = use_starship_toml();
 const { mutate: save_toml, isPending: is_pending } = use_save_starship_toml();
 
@@ -156,28 +151,38 @@ function on_submit() {
     const updated_toml = update_toml_section(toml.value, current_lang.value.section_name, data);
     save_toml(updated_toml, {
         onSuccess: () =>
-            toast.success(
-                t('starship.modules.techStack.saveSuccess', { name: current_lang.value.name })
-            ),
+            toast.add({
+                title: t('starship.modules.techStack.saveSuccess', {
+                    name: current_lang.value.name,
+                }),
+                color: 'success',
+            }),
         onError: (error) =>
-            toast.error(t('starship.modules.saveFailed', { message: error.message })),
+            toast.add({
+                title: t('starship.modules.saveFailed', { message: error.message }),
+                color: 'error',
+            }),
     });
 }
 </script>
 
 <template>
     <StarshipLayout>
-        <div v-if="is_loading" class="text-sm text-muted-foreground">{{ t('common.loading') }}</div>
+        <div v-if="is_loading" class="text-sm text-(--ui-text-muted)">
+            {{ t('common.loading') }}
+        </div>
 
         <div v-else class="space-y-6">
             <div class="flex gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h3 class="text-lg font-medium">{{ t('starship.modules.techStack.title') }}</h3>
-                    <p class="text-sm text-muted-foreground">
+                    <h3 class="text-lg font-medium">
+                        {{ t('starship.modules.techStack.title') }}
+                    </h3>
+                    <p class="text-sm text-(--ui-text-muted)">
                         {{ t('starship.modules.techStack.subtitle') }}
                     </p>
                 </div>
-                <Button v-on:click="on_submit" v-bind:disabled="is_pending" class="sm:self-start">
+                <UButton v-on:click="on_submit" v-bind:disabled="is_pending" class="sm:self-start">
                     {{
                         is_pending
                             ? t('common.saving')
@@ -185,7 +190,7 @@ function on_submit() {
                                   name: current_lang.name,
                               })
                     }}
-                </Button>
+                </UButton>
             </div>
 
             <div class="flex flex-wrap gap-2">
@@ -194,14 +199,12 @@ function on_submit() {
                     v-bind:key="lang.id"
                     type="button"
                     v-on:click="state.selected_lang = lang.id"
-                    v-bind:class="
-                        cn(
-                            'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                            state.selected_lang === lang.id
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted hover:bg-muted/80'
-                        )
-                    "
+                    v-bind:class="[
+                        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                        state.selected_lang === lang.id
+                            ? 'bg-(--ui-primary) text-(--ui-bg)'
+                            : 'bg-(--ui-bg-accented) hover:bg-(--ui-bg-accented)/80',
+                    ]"
                 >
                     {{ lang.name }}
                 </button>
@@ -209,13 +212,17 @@ function on_submit() {
 
             <form v-on:submit.prevent="on_submit" class="space-y-4">
                 <div
-                    class="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/50"
+                    class="flex items-center justify-between rounded-xl border border-(--ui-border) bg-(--ui-bg-accented)/30 p-4 transition-colors hover:bg-(--ui-bg-accented)/50"
                 >
                     <div class="space-y-0.5">
-                        <Label v-bind:for="'disabled'">{{
-                            t('starship.modules.techStack.disable', { name: current_lang.name })
-                        }}</Label>
-                        <p class="text-xs text-muted-foreground">
+                        <label v-bind:for="'disabled'" class="text-sm font-medium">
+                            {{
+                                t('starship.modules.techStack.disable', {
+                                    name: current_lang.name,
+                                })
+                            }}
+                        </label>
+                        <p class="text-xs text-(--ui-text-muted)">
                             {{
                                 t('starship.modules.techStack.disableDesc', {
                                     name: current_lang.name,
@@ -223,70 +230,58 @@ function on_submit() {
                             }}
                         </p>
                     </div>
-                    <Switch v-bind:id="'disabled'" v-model:modelValue="state.disabled" />
+                    <USwitch v-bind:id="'disabled'" v-model:model-value="state.disabled" />
                 </div>
 
                 <div class="grid gap-4">
-                    <div class="space-y-2">
-                        <Label v-bind:for="'symbol'">{{
-                            t('starship.modules.techStack.symbol')
-                        }}</Label>
-                        <Input
+                    <UFormField
+                        v-bind:label="t('starship.modules.techStack.symbol')"
+                        v-bind:description="t('starship.modules.techStack.symbolDesc')"
+                    >
+                        <UInput
                             v-bind:id="'symbol'"
-                            v-model:modelValue="state.symbol"
+                            v-model:model-value="state.symbol"
                             v-bind:placeholder="current_lang.defaults.symbol"
                             v-bind:disabled="state.disabled"
                             v-bind:class="'font-nerd'"
                         />
-                        <p class="text-xs text-muted-foreground">
-                            {{ t('starship.modules.techStack.symbolDesc') }}
-                        </p>
-                    </div>
+                    </UFormField>
 
-                    <div class="space-y-2">
-                        <Label v-bind:for="'style'">{{
-                            t('starship.modules.techStack.style')
-                        }}</Label>
+                    <UFormField
+                        v-bind:label="t('starship.modules.techStack.style')"
+                        v-bind:description="t('starship.modules.techStack.styleDesc')"
+                    >
                         <ColorPickerInput
                             v-bind:id="'style'"
                             v-model:modelValue="state.style"
                             v-bind:placeholder="current_lang.defaults.style"
                             v-bind:disabled="state.disabled"
                         />
-                        <p class="text-xs text-muted-foreground">
-                            {{ t('starship.modules.techStack.styleDesc') }}
-                        </p>
-                    </div>
+                    </UFormField>
 
-                    <div class="space-y-2">
-                        <Label v-bind:for="'format'">{{
-                            t('starship.modules.techStack.format')
-                        }}</Label>
-                        <Input
+                    <UFormField
+                        v-bind:label="t('starship.modules.techStack.format')"
+                        v-bind:description="t('starship.modules.techStack.formatDesc')"
+                    >
+                        <UInput
                             v-bind:id="'format'"
-                            v-model:modelValue="state.format"
+                            v-model:model-value="state.format"
                             v-bind:placeholder="current_lang.defaults.format"
                             v-bind:disabled="state.disabled"
                         />
-                        <p class="text-xs text-muted-foreground">
-                            {{ t('starship.modules.techStack.formatDesc') }}
-                        </p>
-                    </div>
+                    </UFormField>
 
-                    <div class="space-y-2">
-                        <Label v-bind:for="'version_format'">{{
-                            t('starship.modules.techStack.versionFormat')
-                        }}</Label>
-                        <Input
+                    <UFormField
+                        v-bind:label="t('starship.modules.techStack.versionFormat')"
+                        v-bind:description="t('starship.modules.techStack.versionFormatDesc')"
+                    >
+                        <UInput
                             v-bind:id="'version_format'"
-                            v-model:modelValue="state.version_format"
+                            v-model:model-value="state.version_format"
                             v-bind:placeholder="'v${raw}'"
                             v-bind:disabled="state.disabled"
                         />
-                        <p class="text-xs text-muted-foreground">
-                            {{ t('starship.modules.techStack.versionFormatDesc') }}
-                        </p>
-                    </div>
+                    </UFormField>
                 </div>
             </form>
         </div>

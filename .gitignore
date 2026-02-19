@@ -10,3 +10,5 @@ target/
 .claude/
 .codex/
 .opencode/
+auto-imports.d.ts
+components.d.ts

@@ -1,14 +1,11 @@
 <script setup>
-import { Check, Palette } from 'lucide-vue-next';
-import { toast } from 'vue-sonner';
 import { useI18n } from 'vue-i18n';
-import Button from '@/components/ui/Button.vue';
 import StarshipLayout from './StarshipLayout.vue';
 import { presets } from '@/lib/presets';
 import { use_apply_preset, use_starship_toml } from '@/composables/use-starship';
-import { cn } from '@/lib/utils';
 
 const { t } = useI18n();
+const toast = useToast();
 const { data: current_toml } = use_starship_toml();
 const apply_preset_mutation = use_apply_preset();
 
@@ -18,9 +15,12 @@ async function handle_apply_preset(preset_id) {
 
     try {
         await apply_preset_mutation.mutateAsync(preset.toml);
-        toast.success(t('starship.presets.applySuccess', { name: preset.name }));
+        toast.add({
+            title: t('starship.presets.applySuccess', { name: preset.name }),
+            color: 'success',
+        });
     } catch {
-        toast.error(t('starship.presets.applyFailed'));
+        toast.add({ title: t('starship.presets.applyFailed'), color: 'error' });
     }
 }
 
@@ -35,56 +35,53 @@ function is_preset_active(preset_toml) {
 <template>
     <StarshipLayout>
         <div class="space-y-4 pb-6">
-            <p class="text-sm text-muted-foreground">{{ t('starship.presets.description') }}</p>
+            <p class="text-sm text-(--ui-text-muted)">{{ t('starship.presets.description') }}</p>
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div
                     v-for="preset in presets"
                     v-bind:key="preset.id"
-                    v-bind:class="
-                        cn(
-                            'group relative flex cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all duration-200',
-                            is_preset_active(preset.toml)
-                                ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
-                                : 'border-border hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md'
-                        )
-                    "
+                    v-bind:class="[
+                        'group relative flex cursor-pointer flex-col rounded-xl border p-4 shadow-sm transition-all duration-200',
+                        is_preset_active(preset.toml)
+                            ? 'border-(--ui-primary)/50 bg-(--ui-primary)/5 ring-1 ring-(--ui-primary)/20'
+                            : 'border-(--ui-border) bg-(--ui-bg-elevated) hover:-translate-y-0.5 hover:border-(--ui-primary)/30 hover:shadow-md',
+                    ]"
                 >
                     <div class="mb-3 flex items-center gap-2.5">
                         <div
-                            v-bind:class="
-                                cn(
-                                    'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-                                    is_preset_active(preset.toml) ? 'bg-primary/10' : 'bg-muted'
-                                )
-                            "
+                            v-bind:class="[
+                                'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
+                                is_preset_active(preset.toml)
+                                    ? 'bg-(--ui-primary)/10'
+                                    : 'bg-(--ui-bg-accented)',
+                            ]"
                         >
-                            <Palette
-                                v-bind:class="
-                                    cn(
-                                        'h-4 w-4',
-                                        is_preset_active(preset.toml)
-                                            ? 'text-primary'
-                                            : 'text-muted-foreground'
-                                    )
-                                "
+                            <UIcon
+                                v-bind:name="'i-lucide-palette'"
+                                v-bind:class="[
+                                    'h-4 w-4',
+                                    is_preset_active(preset.toml)
+                                        ? 'text-(--ui-primary)'
+                                        : 'text-(--ui-text-muted)',
+                                ]"
                             />
                         </div>
                         <h3 class="font-medium">{{ preset.name }}</h3>
                         <div
                             v-if="is_preset_active(preset.toml)"
-                            class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary"
+                            class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-(--ui-primary)"
                         >
-                            <Check class="h-3 w-3 text-primary-foreground" />
+                            <UIcon v-bind:name="'i-lucide-check'" class="h-3 w-3 text-(--ui-bg)" />
                         </div>
                     </div>
 
-                    <p class="mb-4 flex-1 text-sm leading-relaxed text-muted-foreground">
+                    <p class="mb-4 flex-1 text-sm leading-relaxed text-(--ui-text-muted)">
                         {{ preset.description }}
                     </p>
 
-                    <Button
-                        v-bind:variant="is_preset_active(preset.toml) ? 'secondary' : 'default'"
+                    <UButton
+                        v-bind:variant="is_preset_active(preset.toml) ? 'soft' : 'solid'"
                         v-bind:size="'sm'"
                         v-on:click="handle_apply_preset(preset.id)"
                         v-bind:disabled="
@@ -93,7 +90,7 @@ function is_preset_active(preset_toml) {
                         v-bind:class="'w-full'"
                     >
                         {{ is_preset_active(preset.toml) ? t('common.active') : t('common.apply') }}
-                    </Button>
+                    </UButton>
                 </div>
             </div>
         </div>

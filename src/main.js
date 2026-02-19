@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query';
+import ui from '@nuxt/ui/vue-plugin';
 
 import App from './App.vue';
 import { router } from '@/router/index.js';
@@ -30,6 +31,7 @@ async function bootstrap() {
     app.use(pinia);
     app.use(router);
     app.use(i18n);
+    app.use(ui);
     app.use(VueQueryPlugin, { queryClient: query_client });
 
     const settings_store = use_settings_store();

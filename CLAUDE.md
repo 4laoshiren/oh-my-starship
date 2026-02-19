@@ -5,24 +5,24 @@ This file provides guidance for AI/code agents working in this repository.
 ## Project Overview
 
 This is a Tauri v2 desktop app for managing Starship prompt configuration on Windows.
-The current frontend is React, but this project is being refactored to Vue.
+The frontend uses Vue 3 with Nuxt UI as the component library.
 
-Primary goals during refactor:
+Primary goals:
 
 - Keep existing features and behavior unchanged unless explicitly requested
-- Replace React architecture with Vue 3 architecture incrementally
 - Keep Tauri Rust commands stable and frontend-framework-agnostic
 
-## Target Tech Stack (Vue Refactor)
+## Tech Stack
 
 - Frontend: Vue 3 + JavaScript + Vite
-- Router: Vue Router 4
+- Router: Vue Router
 - State: Pinia
 - Data Fetching: @tanstack/vue-query
-- Forms: vee-validate + zod
 - I18n: vue-i18n
-- Styling: Tailwind CSS v4
-- UI Components: shadcn-vue
+- Styling: Tailwind CSS v4 (via @nuxt/ui)
+- UI Components: Nuxt UI (standalone, via @nuxt/ui/vite plugin)
+- Icons: Iconify (via Nuxt UI, using i-lucide-xxx notation)
+- Toast: useToast() composable (via Nuxt UI)
 - Backend: Rust + Tauri v2
 - Package Manager: pnpm (required)
 
@@ -54,12 +54,10 @@ pnpm format:write
 pnpm ui:build
 ```
 
-## Target Frontend Structure
+## Frontend Structure
 
-Use this structure for the Vue migration:
-
-- `src/main.js` - Vue app entry
-- `src/App.vue` - root component
+- `src/main.js` - Vue app entry (registers Nuxt UI plugin)
+- `src/App.vue` - root component (wraps in UApp + UToaster)
 - `src/router/index.js` - route definitions
 - `src/stores/` - Pinia stores
 - `src/composables/` - reusable Vue composables
@@ -67,7 +65,7 @@ Use this structure for the Vue migration:
 - `src/services/cmds.js` - Tauri invoke wrappers
 - `src/views/` - route pages
 - `src/components/` - shared Vue components
-- `src/components/ui/` - reusable UI primitives
+- `src/components/ui/` - custom UI primitives (ColorPickerInput only)
 - `src/i18n/` - localization setup and locale files
 - `src/types.js` - shared JavaScript types
 
@@ -81,27 +79,15 @@ Rust command contracts should remain stable while frontend is being migrated.
 
 ## Architecture Rules
 
-1. Use Vue SFC with `<script setup">` by default.
-2. Do not introduce new React code for new features.
-3. Migrate feature-by-feature (route-by-route), and keep each migrated feature fully working.
-4. Keep Tauri command calls centralized in `src/services/cmds.js`.
-5. Keep async server/state logic in composables or Vue Query hooks, not in template-heavy components.
-6. Keep validation on the frontend before write/save operations.
-7. Preserve i18n keys and user-visible behavior unless change is requested.
-8. Prefer small, testable functions for TOML transformation and parsing logic.
-
-## Migration Guidelines
-
-1. First migrate app shell (main entry, app container, router).
-2. Then migrate shared infra (theme, i18n, services, query layer).
-3. Migrate pages one by one:
-   - Home
-   - Config list
-   - Starship module editor
-   - TOML editor
-   - Settings
-4. After each page migration, run type check and smoke test.
-5. Remove React-only dependencies only after all related code is migrated.
+1. Use Vue SFC with `<script setup>` by default.
+2. Keep Tauri command calls centralized in `src/services/cmds.js`.
+3. Keep async server/state logic in composables or Vue Query hooks, not in template-heavy components.
+4. Keep validation on the frontend before write/save operations.
+5. Preserve i18n keys and user-visible behavior unless change is requested.
+6. Prefer small, testable functions for TOML transformation and parsing logic.
+7. Nuxt UI components (UButton, UInput, UModal, etc.) are auto-imported - do not add explicit imports for them.
+8. Use `useToast()` composable (auto-imported) for toast notifications with `toast.add({ title, color })`.
+9. Use `UIcon` with Iconify notation (e.g., `i-lucide-settings`) instead of importing icon components.
 
 ## Code Principles
 
@@ -126,4 +112,5 @@ Rust command contracts should remain stable while frontend is being migrated.
 - All file operations should use async/await.
 - Preserve backup behavior and filename strategy.
 - Keep Windows path handling robust and explicit.
-- Do not use `--yes` for shadcn-related component installation commands.
+- ColorPickerInput is the only custom UI component (Nuxt UI does not provide an equivalent hex color input widget).
+- Nuxt UI CSS variables use the `--ui-` prefix (e.g., `--ui-border`, `--ui-bg-elevated`, `--ui-text-muted`, `--ui-primary`).

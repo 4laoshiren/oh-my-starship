@@ -1,14 +1,3 @@
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-// 定义utility function: cn
-// 具体说明见: https://www.youtube.com/watch?v=re2JFITR7TI
-// Define the cn utility function.
-// For more guidance, see: https://www.youtube.com/watch?v=re2JFITR7TI
-export function cn(...inputs) {
-    return twMerge(clsx(inputs));
-}
-
 export function apply_theme(theme) {
     const root = document.documentElement;
 

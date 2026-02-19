@@ -1,9 +1,7 @@
 <script setup>
-import { Moon, Sun, Monitor, Languages, Check } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { use_settings_store } from '@/stores/settings';
 import { Themes, ThemeColors } from '@/types';
-import { cn } from '@/lib/utils';
 
 const { t, locale } = useI18n();
 const settings_store = use_settings_store();
@@ -21,9 +19,9 @@ const theme_color_display_colors = {
 };
 
 const theme_options = [
-    { value: Themes.Light, label_key: 'settings.themes.light', icon: Sun },
-    { value: Themes.Dark, label_key: 'settings.themes.dark', icon: Moon },
-    { value: Themes.System, label_key: 'settings.themes.system', icon: Monitor },
+    { value: Themes.Light, label_key: 'settings.themes.light', icon: 'i-lucide-sun' },
+    { value: Themes.Dark, label_key: 'settings.themes.dark', icon: 'i-lucide-moon' },
+    { value: Themes.System, label_key: 'settings.themes.system', icon: 'i-lucide-monitor' },
 ];
 
 const theme_color_options = [
@@ -58,22 +56,17 @@ function handle_language_change(lng) {
             <div>
                 <label class="text-sm font-medium">{{ t('settings.theme') }}</label>
                 <div class="mt-3 flex gap-2">
-                    <button
+                    <UButton
                         v-for="option in theme_options"
                         v-bind:key="option.value"
-                        v-on:click="settings_store.update_setting('theme', option.value)"
-                        v-bind:class="
-                            cn(
-                                'flex cursor-pointer items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200',
-                                settings_store.state.theme === option.value
-                                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                                    : 'border-border bg-card hover:border-primary/30 hover:bg-accent active:scale-[0.98]'
-                            )
+                        v-bind:variant="
+                            settings_store.state.theme === option.value ? 'solid' : 'outline'
                         "
+                        v-bind:icon="option.icon"
+                        v-on:click="settings_store.update_setting('theme', option.value)"
                     >
-                        <component v-bind:is="option.icon" class="h-4 w-4" />
                         {{ t(option.label_key) }}
-                    </button>
+                    </UButton>
                 </div>
             </div>
 
@@ -84,42 +77,37 @@ function handle_language_change(lng) {
                         v-for="option in theme_color_options"
                         v-bind:key="option.value"
                         v-on:click="settings_store.update_setting('theme_color', option.value)"
-                        v-bind:class="
-                            cn(
-                                'group flex cursor-pointer flex-col items-center gap-2 rounded-xl border bg-card p-2.5 transition-all duration-200',
-                                settings_store.state.theme_color === option.value
-                                    ? 'border-primary/50 ring-2 ring-primary/20 shadow-sm'
-                                    : 'border-border hover:border-primary/30 hover:shadow-sm active:scale-[0.98]'
-                            )
-                        "
+                        v-bind:class="[
+                            'group flex cursor-pointer flex-col items-center gap-2 rounded-xl border bg-(--ui-bg-elevated) p-2.5 transition-all duration-200',
+                            settings_store.state.theme_color === option.value
+                                ? 'border-(--ui-primary)/50 ring-2 ring-(--ui-primary)/20 shadow-sm'
+                                : 'border-(--ui-border) hover:border-(--ui-primary)/30 hover:shadow-sm active:scale-[0.98]',
+                        ]"
                         v-bind:title="t(option.label_key)"
                     >
                         <div
-                            v-bind:class="
-                                cn(
-                                    'relative flex h-8 w-8 items-center justify-center rounded-full shadow-sm transition-transform duration-200',
-                                    settings_store.state.theme_color !== option.value &&
-                                        'group-hover:scale-110'
-                                )
-                            "
+                            v-bind:class="[
+                                'relative flex h-8 w-8 items-center justify-center rounded-full shadow-sm transition-transform duration-200',
+                                settings_store.state.theme_color !== option.value &&
+                                    'group-hover:scale-110',
+                            ]"
                             v-bind:style="{
                                 backgroundColor: theme_color_display_colors[option.value],
                             }"
                         >
-                            <Check
+                            <UIcon
                                 v-if="settings_store.state.theme_color === option.value"
+                                v-bind:name="'i-lucide-check'"
                                 class="h-4 w-4 text-white drop-shadow-sm"
                             />
                         </div>
                         <span
-                            v-bind:class="
-                                cn(
-                                    'text-xs transition-colors',
-                                    settings_store.state.theme_color === option.value
-                                        ? 'font-medium text-foreground'
-                                        : 'text-muted-foreground'
-                                )
-                            "
+                            v-bind:class="[
+                                'text-xs transition-colors',
+                                settings_store.state.theme_color === option.value
+                                    ? 'font-medium text-(--ui-text)'
+                                    : 'text-(--ui-text-muted)',
+                            ]"
                         >
                             {{ t(option.label_key) }}
                         </span>
@@ -130,22 +118,15 @@ function handle_language_change(lng) {
             <div>
                 <label class="text-sm font-medium">{{ t('settings.language') }}</label>
                 <div class="mt-3 flex gap-2">
-                    <button
+                    <UButton
                         v-for="option in language_options"
                         v-bind:key="option.value"
+                        v-bind:variant="locale === option.value ? 'solid' : 'outline'"
+                        v-bind:icon="'i-lucide-languages'"
                         v-on:click="handle_language_change(option.value)"
-                        v-bind:class="
-                            cn(
-                                'flex cursor-pointer items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200',
-                                locale === option.value
-                                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                                    : 'border-border bg-card hover:border-primary/30 hover:bg-accent active:scale-[0.98]'
-                            )
-                        "
                     >
-                        <Languages class="h-4 w-4" />
                         {{ t(option.label_key) }}
-                    </button>
+                    </UButton>
                 </div>
             </div>
         </div>

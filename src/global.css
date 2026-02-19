@@ -1,202 +1,82 @@
 @import 'tailwindcss';
+@import '@nuxt/ui';
 
-@custom-variant dark (&:is(.dark *));
-
-/* Default theme (Zinc) */
+/* Custom theme color overrides for dynamic primary color switching */
+/* These override Nuxt UI's primary color at runtime via theme-* classes */
 :root {
-    --background: transparent;
-    --foreground: hsl(240 10% 3.9%);
-    --card: hsl(0 0% 100%);
-    --card-foreground: hsl(240 10% 3.9%);
-    --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(240 10% 3.9%);
-    --primary: hsl(240 5.9% 10%);
-    --primary-foreground: hsl(0 0% 98%);
-    --secondary: hsl(240 4.8% 95.9%);
-    --secondary-foreground: hsl(240 5.9% 10%);
-    --muted: hsl(240 4.8% 95.9%);
-    --muted-foreground: hsl(240 3.8% 46.1%);
-    --accent: hsl(240 4.8% 95.9%);
-    --accent-foreground: hsl(240 5.9% 10%);
-    --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(240 5.9% 90%);
-    --input: hsl(240 5.9% 90%);
-    --ring: hsl(240 5.9% 10%);
-    --radius: 0.6rem;
     --theme-color: hsl(240 5.2% 33.9%);
 }
 
 .dark {
-    --background: hsl(240 10% 3.9%);
-    --foreground: hsl(0 0% 98%);
-    --card: hsl(240 10% 3.9%);
-    --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(240 10% 3.9%);
-    --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(240 5.9% 10%);
-    --secondary: hsl(240 3.7% 15.9%);
-    --secondary-foreground: hsl(0 0% 98%);
-    --muted: hsl(240 3.7% 15.9%);
-    --muted-foreground: hsl(240 5% 64.9%);
-    --accent: hsl(240 3.7% 15.9%);
-    --accent-foreground: hsl(0 0% 98%);
-    --destructive: hsl(0 62.8% 30.6%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(240 3.7% 15.9%);
-    --input: hsl(240 3.7% 15.9%);
-    --ring: hsl(240 4.9% 83.9%);
     --theme-color: hsl(240 5.2% 33.9%);
 }
 
 /* Slate theme */
 .theme-slate {
-    --primary: hsl(215.4 16.3% 46.9%);
-    --primary-foreground: hsl(210 40% 98%);
-    --ring: hsl(215.4 16.3% 46.9%);
     --theme-color: hsl(215.4 16.3% 46.9%);
 }
 .theme-slate.dark {
-    --primary: hsl(217.2 32.6% 17.5%);
-    --primary-foreground: hsl(210 40% 98%);
-    --ring: hsl(215.3 19.3% 34.5%);
     --theme-color: hsl(215.3 19.3% 34.5%);
 }
 
 /* Red theme */
 .theme-red {
-    --primary: hsl(0 72.2% 50.6%);
-    --primary-foreground: hsl(0 85.7% 97.3%);
-    --ring: hsl(0 72.2% 50.6%);
     --theme-color: hsl(0 72.2% 50.6%);
 }
 .theme-red.dark {
-    --primary: hsl(0 72.2% 50.6%);
-    --primary-foreground: hsl(0 85.7% 97.3%);
-    --ring: hsl(0 72.2% 50.6%);
     --theme-color: hsl(0 72.2% 50.6%);
 }
 
 /* Rose theme */
 .theme-rose {
-    --primary: hsl(346.8 77.2% 49.8%);
-    --primary-foreground: hsl(355.7 100% 97.3%);
-    --ring: hsl(346.8 77.2% 49.8%);
     --theme-color: hsl(346.8 77.2% 49.8%);
 }
 .theme-rose.dark {
-    --primary: hsl(346.8 77.2% 49.8%);
-    --primary-foreground: hsl(355.7 100% 97.3%);
-    --ring: hsl(346.8 77.2% 49.8%);
     --theme-color: hsl(346.8 77.2% 49.8%);
 }
 
 /* Orange theme */
 .theme-orange {
-    --primary: hsl(24.6 95% 53.1%);
-    --primary-foreground: hsl(60 9.1% 97.8%);
-    --ring: hsl(24.6 95% 53.1%);
     --theme-color: hsl(24.6 95% 53.1%);
 }
 .theme-orange.dark {
-    --primary: hsl(20.5 90.2% 48.2%);
-    --primary-foreground: hsl(60 9.1% 97.8%);
-    --ring: hsl(20.5 90.2% 48.2%);
     --theme-color: hsl(20.5 90.2% 48.2%);
 }
 
 /* Green theme */
 .theme-green {
-    --primary: hsl(142.1 76.2% 36.3%);
-    --primary-foreground: hsl(355.7 100% 97.3%);
-    --ring: hsl(142.1 76.2% 36.3%);
     --theme-color: hsl(142.1 76.2% 36.3%);
 }
 .theme-green.dark {
-    --primary: hsl(142.1 70.6% 45.3%);
-    --primary-foreground: hsl(144.9 80.4% 10%);
-    --ring: hsl(142.1 70.6% 45.3%);
     --theme-color: hsl(142.1 70.6% 45.3%);
 }
 
 /* Blue theme */
 .theme-blue {
-    --primary: hsl(221.2 83.2% 53.3%);
-    --primary-foreground: hsl(210 40% 98%);
-    --ring: hsl(221.2 83.2% 53.3%);
     --theme-color: hsl(221.2 83.2% 53.3%);
 }
 .theme-blue.dark {
-    --primary: hsl(217.2 91.2% 59.8%);
-    --primary-foreground: hsl(222.2 47.4% 11.2%);
-    --ring: hsl(217.2 91.2% 59.8%);
     --theme-color: hsl(217.2 91.2% 59.8%);
 }
 
 /* Yellow theme */
 .theme-yellow {
-    --primary: hsl(47.9 95.8% 53.1%);
-    --primary-foreground: hsl(26 83.3% 14.1%);
-    --ring: hsl(47.9 95.8% 53.1%);
     --theme-color: hsl(47.9 95.8% 53.1%);
 }
 .theme-yellow.dark {
-    --primary: hsl(47.9 95.8% 53.1%);
-    --primary-foreground: hsl(26 83.3% 14.1%);
-    --ring: hsl(47.9 95.8% 53.1%);
     --theme-color: hsl(47.9 95.8% 53.1%);
 }
 
 /* Violet theme */
 .theme-violet {
-    --primary: hsl(262.1 83.3% 57.8%);
-    --primary-foreground: hsl(210 40% 98%);
-    --ring: hsl(262.1 83.3% 57.8%);
     --theme-color: hsl(262.1 83.3% 57.8%);
 }
 .theme-violet.dark {
-    --primary: hsl(263.4 70% 50.4%);
-    --primary-foreground: hsl(210 40% 98%);
-    --ring: hsl(263.4 70% 50.4%);
     --theme-color: hsl(263.4 70% 50.4%);
 }
 
 @theme inline {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
     --color-theme: var(--theme-color);
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) + 4px);
-}
-
-@layer base {
-    * {
-        @apply border-border outline-ring/50;
-    }
-
-    body {
-        @apply bg-background text-foreground;
-    }
 }
 
 @layer base {
@@ -270,13 +150,6 @@
     }
     .interactive-lift:active {
         transform: translateY(0);
-    }
-}
-
-/* Ring effect for focus/active states */
-@layer utilities {
-    .ring-highlight {
-        @apply ring-2 ring-primary/20 ring-offset-1 ring-offset-background;
     }
 }
 

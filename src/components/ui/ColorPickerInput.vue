@@ -1,12 +1,6 @@
 <script setup>
 import { reactive, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Palette } from 'lucide-vue-next';
-import { cn } from '@/lib/utils';
-import Input from './Input.vue';
-import DropdownMenu from './DropdownMenu.vue';
-import DropdownMenuTrigger from './DropdownMenuTrigger.vue';
-import DropdownMenuContent from './DropdownMenuContent.vue';
 
 const props = defineProps(['modelValue', 'id', 'placeholder', 'disabled', 'class']);
 const emit = defineEmits(['update:modelValue']);
@@ -69,8 +63,8 @@ function handle_color_picker_change(event) {
     handle_color_select(color);
 }
 
-function handle_text_input(event) {
-    emit('update:modelValue', event.target.value);
+function handle_text_input(value) {
+    emit('update:modelValue', value);
 }
 
 function handle_custom_input(val) {
@@ -92,45 +86,29 @@ function handle_apply_custom() {
 
 <template>
     <div class="relative flex items-center gap-2">
-        <input
-            v-bind:type="'text'"
+        <UInput
             v-bind:id="props.id"
-            v-bind:value="props.modelValue"
-            v-on:input="handle_text_input"
+            v-bind:model-value="props.modelValue"
+            v-on:update:model-value="handle_text_input"
             v-bind:placeholder="props.placeholder"
             v-bind:disabled="props.disabled"
-            v-bind:class="
-                cn(
-                    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pr-10 font-nerd',
-                    props.class
-                )
-            "
+            v-bind:class="'pr-10 font-nerd'"
         />
-        <DropdownMenu v-model:open="state.open">
-            <DropdownMenuTrigger>
-                <button
-                    type="button"
-                    v-bind:class="
-                        cn(
-                            'absolute right-1 flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                            props.disabled && 'pointer-events-none'
-                        )
-                    "
-                    v-bind:disabled="props.disabled"
-                >
-                    <div
-                        class="h-5 w-5 rounded border border-border shadow-sm"
-                        v-bind:style="{ backgroundColor: current_color }"
-                    />
-                </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                v-bind:align="'end'"
-                v-bind:class="'w-64 p-3'"
-                v-bind:side-offset="8"
+        <UPopover v-model:open="state.open">
+            <UButton
+                v-bind:variant="'ghost'"
+                v-bind:size="'xs'"
+                v-bind:disabled="props.disabled"
+                class="absolute right-1 flex h-7 w-7 items-center justify-center"
             >
-                <div class="space-y-3">
-                    <div class="mb-2 text-xs font-medium text-muted-foreground">
+                <div
+                    class="h-5 w-5 rounded border border-(--ui-border) shadow-sm"
+                    v-bind:style="{ backgroundColor: current_color }"
+                />
+            </UButton>
+            <template #content>
+                <div class="w-60 space-y-3 p-3">
+                    <div class="mb-2 text-xs font-medium text-(--ui-text-muted)">
                         {{ t('colorPicker.customColor') }}
                     </div>
                     <div class="relative">
@@ -141,14 +119,17 @@ function handle_apply_custom() {
                             class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                         />
                         <div
-                            class="flex h-9 items-center gap-2 rounded-md border border-input bg-transparent px-3 text-sm"
+                            class="flex h-9 items-center gap-2 rounded-md border border-(--ui-border) bg-transparent px-3 text-sm"
                         >
-                            <Palette class="h-4 w-4 text-muted-foreground" />
-                            <span class="flex-1 text-muted-foreground">
+                            <UIcon
+                                v-bind:name="'i-lucide-palette'"
+                                class="h-4 w-4 text-(--ui-text-muted)"
+                            />
+                            <span class="flex-1 text-(--ui-text-muted)">
                                 {{ t('colorPicker.selectColor') }}
                             </span>
                             <div
-                                class="h-5 w-5 rounded border border-border"
+                                class="h-5 w-5 rounded border border-(--ui-border)"
                                 v-bind:style="{ backgroundColor: state.custom_color }"
                             />
                         </div>
@@ -159,18 +140,18 @@ function handle_apply_custom() {
                             v-bind:value="state.custom_color"
                             v-on:input="(e) => handle_custom_input(e.target.value)"
                             placeholder="#RRGGBB"
-                            class="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 font-mono text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            class="flex h-8 w-full rounded-md border border-(--ui-border) bg-transparent px-3 py-1 font-mono text-xs shadow-sm transition-colors placeholder:text-(--ui-text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-(--ui-primary)"
                         />
-                        <button
-                            type="button"
+                        <UButton
+                            v-bind:variant="'solid'"
+                            v-bind:size="'xs'"
                             v-on:click="handle_apply_custom"
-                            class="h-8 whitespace-nowrap rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                         >
                             {{ t('colorPicker.apply') }}
-                        </button>
+                        </UButton>
                     </div>
                 </div>
-            </DropdownMenuContent>
-        </DropdownMenu>
+            </template>
+        </UPopover>
     </div>
 </template>
