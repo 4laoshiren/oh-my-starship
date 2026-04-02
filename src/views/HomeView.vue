@@ -48,10 +48,12 @@ const nav_items = [
                     v-bind:key="item.to"
                     v-bind:to="item.to"
                     v-bind:class="[
-                        'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                        `flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium
+                        transition-all duration-200`,
                         route.path === item.to
                             ? 'bg-(--ui-primary)/10 text-(--ui-primary) shadow-sm'
-                            : 'text-(--ui-text-muted) hover:bg-(--ui-bg-accented) hover:text-(--ui-text)',
+                            : `text-(--ui-text-muted) hover:bg-(--ui-bg-accented)
+                                hover:text-(--ui-text)`,
                     ]"
                 >
                     <UIcon v-bind:name="item.icon" class="h-4 w-4" />
