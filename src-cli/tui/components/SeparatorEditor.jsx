@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import {
     cyclePowerlineEndCap,
@@ -138,8 +139,8 @@ function PowerlineFrameEditor({ settings, onChange, onBack, interactive }) {
                 : null;
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1}>
-            <Text bold>Powerline Frame</Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1} titles={['Powerline Frame']}>
+
             <Text dimColor>
                 Prompt Layout only edits content lines. All implicit frame pieces live here.
             </Text>
@@ -167,7 +168,7 @@ function PowerlineFrameEditor({ settings, onChange, onBack, interactive }) {
                     presetText={presetText}
                 />
             )}
-        </Box>
+        </TitledBox>
     );
 
     function handleMenuInput(input, key) {

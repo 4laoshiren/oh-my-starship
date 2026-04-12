@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { removeMapEntry, upsertMapEntry } from '../../utils/settings-mutations.js';
 
@@ -83,10 +84,8 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
     );
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1}>
-            <Text bold>
-                {moduleKey}.{fieldKey}
-            </Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1} titles={[`${moduleKey}.${fieldKey}`]}>
+
             <Text dimColor>A add E edit D delete ESC back</Text>
             {inputMode && (
                 <Text color="cyan">
@@ -109,7 +108,7 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
                     })
                 )}
             </Box>
-        </Box>
+        </TitledBox>
     );
 
     function resetInput() {

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 const MENU_ITEMS = [
     {
@@ -47,8 +48,8 @@ function MainMenu({ dirty, onSelect, interactive }) {
     );
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="green" paddingX={1}>
-            <Text bold>Main Menu</Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="green" paddingX={1} titles={['Main Menu']}>
+
             <Text dimColor>
                 {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
             </Text>
@@ -65,7 +66,7 @@ function MainMenu({ dirty, onSelect, interactive }) {
                     );
                 })}
             </Box>
-        </Box>
+        </TitledBox>
     );
 }
 

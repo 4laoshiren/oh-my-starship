@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { MODULE_SCHEMAS } from '../../types/settings.js';
 import { toggleModuleField, updateModuleField } from '../../utils/settings-mutations.js';
@@ -91,11 +92,8 @@ function ModuleEditor({ settings, moduleKey, onBack, onChange, onOpenMap, intera
     );
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
-            <Text bold>
-                Module: {schema.label}
-                <Text dimColor> ({moduleKey})</Text>
-            </Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1} titles={[`Module: ${schema.label} (${moduleKey})`]}>
+
             <Text dimColor>↑↓ select Enter/E edit/open ←→ toggle boolean ESC back</Text>
             {inputMode && (
                 <Text color="cyan">
@@ -116,7 +114,7 @@ function ModuleEditor({ settings, moduleKey, onBack, onChange, onOpenMap, intera
                     );
                 })}
             </Box>
-        </Box>
+        </TitledBox>
     );
 
     function resetInputMode() {

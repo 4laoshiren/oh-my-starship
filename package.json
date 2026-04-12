@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
+    "@mishieck/ink-titled-box": "^0.4.2",
     "chalk": "^5.4.1",
     "ink": "^6.2.3",
     "react": "^19.2.0"

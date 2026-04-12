@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import {
     addPromptItem,
@@ -225,8 +226,8 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
     }, [inputMode, mode]);
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-            <Text bold>Prompt Layout</Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1} titles={['Prompt Layout']}>
+
             <Text dimColor>
                 Only real content items appear here. Implicit powerline frame lives in Powerline
                 Frame.
@@ -270,7 +271,7 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
                     )}
                 </Box>
             )}
-        </Box>
+        </TitledBox>
     );
 
     function resetInputMode() {

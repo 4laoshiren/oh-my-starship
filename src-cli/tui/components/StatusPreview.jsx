@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { parseAnsiLines } from '../../utils/ansi.js';
 import { renderStarshipPreview } from '../../utils/starship-preview.js';
@@ -12,8 +13,13 @@ function StatusPreview({ settings, terminalWidth }) {
     const previewLines = parseAnsiLines(preview.text);
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-            <Text bold>Preview</Text>
+        <TitledBox
+            flexDirection="column"
+            borderStyle="round"
+            borderColor="cyan"
+            paddingX={1}
+            titles={['Preview']}
+        >
             <Box flexDirection="column">
                 {previewLines.map((line, index) => (
                     <Text key={index}>
@@ -32,7 +38,7 @@ function StatusPreview({ settings, terminalWidth }) {
                     </Text>
                 ))}
             </Box>
-        </Box>
+        </TitledBox>
     );
 }
 

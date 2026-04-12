@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { MODULE_GROUPS } from '../../types/settings.js';
 
@@ -42,8 +43,8 @@ function ModuleList({ settings, onBack, onSelect, interactive }) {
     );
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
-            <Text bold>Modules</Text>
+        <TitledBox flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1} titles={['Modules']}>
+
             <Text dimColor>↑↓ select Enter open ESC back</Text>
             <Box marginTop={1} flexDirection="column">
                 {modules.map((entry, index) => {
@@ -61,7 +62,7 @@ function ModuleList({ settings, onBack, onSelect, interactive }) {
                     );
                 })}
             </Box>
-        </Box>
+        </TitledBox>
     );
 }
 
