@@ -1,42 +1,47 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 
-export function ModuleEditor({ moduleKey, moduleConfig, fields, onChange, onBack, interactive }) {
+import { MODULE_SCHEMAS } from '../../types/settings.js';
+import { toggleModuleField, updateModuleField } from '../../utils/settings-mutations.js';
+
+function ModuleEditor({ settings, moduleKey, onBack, onChange, onOpenMap, interactive }) {
+    const schema = MODULE_SCHEMAS[moduleKey] || {
+        label: moduleKey,
+        fields: inferFields(settings.modules[moduleKey] || {}),
+    };
+    const moduleConfig = settings.modules[moduleKey] || {};
+    const fields = useMemo(() => schema.fields, [schema.fields]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [inputMode, setInputMode] = useState(false);
-    const [inputBuffer, setInputBuffer] = useState('');
-    const editableFields = useMemo(() => fields, [fields]);
+    const [buffer, setBuffer] = useState('');
 
     useInput(
         (input, key) => {
+            const field = fields[selectedIndex];
+
             if (inputMode) {
                 if (key.escape) {
-                    setInputMode(false);
-                    setInputBuffer('');
+                    resetInputMode();
                     return;
                 }
 
                 if (key.return) {
-                    const currentField = editableFields[selectedIndex];
-                    if (!currentField) {
-                        setInputMode(false);
-                        setInputBuffer('');
-                        return;
+                    if (field) {
+                        onChange(
+                            updateModuleField(settings, moduleKey, field.key, buffer, field.type)
+                        );
                     }
-                    const next = applyFieldValue(moduleConfig, currentField, inputBuffer);
-                    onChange(next);
-                    setInputMode(false);
-                    setInputBuffer('');
+                    resetInputMode();
                     return;
                 }
 
                 if (key.backspace || key.delete) {
-                    setInputBuffer((previous) => previous.slice(0, -1));
+                    setBuffer((previous) => previous.slice(0, -1));
                     return;
                 }
 
                 if (input) {
-                    setInputBuffer((previous) => previous + input);
+                    setBuffer((previous) => previous + input);
                 }
                 return;
             }
@@ -47,100 +52,112 @@ export function ModuleEditor({ moduleKey, moduleConfig, fields, onChange, onBack
             }
 
             if (key.upArrow) {
-                setSelectedIndex((previous) => Math.max(0, previous - 1));
+                setSelectedIndex((previous) => clamp(previous - 1, 0, fields.length - 1));
                 return;
             }
 
             if (key.downArrow) {
-                setSelectedIndex((previous) =>
-                    Math.min(Math.max(0, editableFields.length - 1), previous + 1)
-                );
+                setSelectedIndex((previous) => clamp(previous + 1, 0, fields.length - 1));
+                return;
+            }
+
+            if (!field) {
                 return;
             }
 
             if (key.leftArrow || key.rightArrow) {
-                const currentField = editableFields[selectedIndex];
-                if (currentField?.type === 'boolean') {
-                    const next = {
-                        ...moduleConfig,
-                        [currentField.key]: !Boolean(moduleConfig[currentField.key]),
-                    };
-                    onChange(next);
+                if (field.type === 'boolean') {
+                    onChange(toggleModuleField(settings, moduleKey, field.key));
                 }
                 return;
             }
 
             if (key.return || input === 'e' || input === 'E') {
-                const currentField = editableFields[selectedIndex];
-                if (!currentField) {
+                if (field.type === 'boolean') {
+                    onChange(toggleModuleField(settings, moduleKey, field.key));
                     return;
                 }
 
-                if (currentField.type === 'boolean') {
-                    const next = {
-                        ...moduleConfig,
-                        [currentField.key]: !Boolean(moduleConfig[currentField.key]),
-                    };
-                    onChange(next);
+                if (field.type === 'map') {
+                    onOpenMap(moduleKey, field.key);
                     return;
                 }
 
                 setInputMode(true);
-                setInputBuffer(String(moduleConfig[currentField.key] ?? ''));
+                setBuffer(String(moduleConfig[field.key] ?? ''));
             }
         },
         { isActive: interactive }
     );
 
     return (
-        <Box flexDirection="column">
-            <Text bold>Module: {moduleKey}</Text>
-            <Text dimColor>↑↓ select field, Enter/E edit, ←→ toggle boolean, ESC back</Text>
+        <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
+            <Text bold>
+                Module: {schema.label}
+                <Text dimColor> ({moduleKey})</Text>
+            </Text>
+            <Text dimColor>↑↓ select Enter/E edit/open ←→ toggle boolean ESC back</Text>
             {inputMode && (
                 <Text color="cyan">
-                    input: {inputBuffer}
+                    value: {buffer}
                     <Text inverse> </Text>
                 </Text>
             )}
             <Box marginTop={1} flexDirection="column">
-                {editableFields.map((field, index) => {
+                {fields.map((field, index) => {
                     const selected = index === selectedIndex;
                     return (
                         <Text key={field.key} color={selected ? 'green' : undefined}>
                             {selected ? '▶ ' : '  '}
-                            {field.label}
-                            {' = '}
-                            {String(moduleConfig[field.key] ?? '')}
-                            <Text dimColor> ({field.type})</Text>
+                            {field.label.padEnd(20)}
+                            {formatValue(moduleConfig[field.key], field.type)}
+                            <Text dimColor> {field.type}</Text>
                         </Text>
                     );
                 })}
             </Box>
         </Box>
     );
+
+    function resetInputMode() {
+        setInputMode(false);
+        setBuffer('');
+    }
 }
 
-function applyFieldValue(moduleConfig, field, rawValue) {
-    if (field.type === 'number') {
-        const parsed = Number(rawValue);
-        if (!Number.isFinite(parsed)) {
-            return moduleConfig;
+function inferFields(config) {
+    return Object.keys(config).map((key) => {
+        const value = config[key];
+        if (typeof value === 'boolean') {
+            return { key, label: key, type: 'boolean' };
         }
-        return {
-            ...moduleConfig,
-            [field.key]: parsed,
-        };
-    }
-
-    if (field.type === 'boolean') {
-        return {
-            ...moduleConfig,
-            [field.key]: rawValue === 'true',
-        };
-    }
-
-    return {
-        ...moduleConfig,
-        [field.key]: rawValue,
-    };
+        if (typeof value === 'number') {
+            return { key, label: key, type: 'number' };
+        }
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            return { key, label: key, type: 'map' };
+        }
+        return { key, label: key, type: 'string' };
+    });
 }
+
+function formatValue(value, type) {
+    if (type === 'map') {
+        return `{${Object.keys(value || {}).length} entries}`;
+    }
+
+    const text = String(value ?? '');
+    if (text.length > 68) {
+        return `${text.slice(0, 65)}...`;
+    }
+    return text;
+}
+
+function clamp(value, min, max) {
+    if (max < min) {
+        return min;
+    }
+    return Math.max(min, Math.min(value, max));
+}
+
+export { ModuleEditor };

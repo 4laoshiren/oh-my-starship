@@ -1,23 +1,39 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 
-import { buildPromptFormat, renderPreviewLine } from '../../utils/renderer.js';
+import { parseAnsiLines } from '../../utils/ansi.js';
+import { renderStarshipPreview } from '../../utils/starship-preview.js';
 
-export function StatusPreview({ settings, dirty }) {
-    const preview = renderPreviewLine(settings);
-    const format = buildPromptFormat(settings);
+function StatusPreview({ settings, terminalWidth }) {
+    const preview = useMemo(
+        () => renderStarshipPreview(settings, { width: terminalWidth }),
+        [settings, terminalWidth]
+    );
+    const previewLines = parseAnsiLines(preview.text);
 
     return (
         <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-            <Text bold>oh-my-starship / react-ink</Text>
-            <Text color={dirty ? 'yellow' : 'green'}>
-                {dirty ? '● Unsaved changes' : '✓ Saved'}
-            </Text>
-            <Text>
-                {'$ '}
-                {preview || '(empty preview)'}
-            </Text>
-            <Text dimColor>format: {format}</Text>
+            <Text bold>Preview</Text>
+            <Box flexDirection="column">
+                {previewLines.map((line, index) => (
+                    <Text key={index}>
+                        {line.length === 0
+                            ? ' '
+                            : line.map((segment, segmentIndex) => (
+                                  <Text
+                                      key={`${segmentIndex}-${segment.text}`}
+                                      color={segment.color}
+                                      backgroundColor={segment.backgroundColor}
+                                      bold={segment.bold}
+                                  >
+                                      {segment.text}
+                                  </Text>
+                              ))}
+                    </Text>
+                ))}
+            </Box>
         </Box>
     );
 }
+
+export { StatusPreview };

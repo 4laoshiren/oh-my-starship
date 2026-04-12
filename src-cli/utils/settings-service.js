@@ -1,24 +1,28 @@
-import { normalizeSettings } from '../types/settings.js';
-import { loadInkState, saveInkState } from './file-store.js';
+import { createDefaultSettings, normalizeSettings } from '../types/settings.js';
+import { saveInkState } from './file-store.js';
 import {
-    applyTomlIntoSettings,
     loadStarshipToml,
-    mergeSettingsIntoToml,
-    saveStarshipToml,
+    parseStarshipToml,
+    saveStarshipSettings,
+    serializeStarshipSettings,
 } from './starship-toml.js';
 
 export function loadInitialSettings() {
-    const inkState = loadInkState();
     const tomlContent = loadStarshipToml();
-    const merged = applyTomlIntoSettings(inkState, tomlContent);
-    return normalizeSettings(merged);
+
+    try {
+        return normalizeSettings(parseStarshipToml(tomlContent));
+    } catch {
+        return createDefaultSettings();
+    }
 }
 
 export function persistSettings(settings) {
     const normalized = normalizeSettings(settings);
     saveInkState(normalized);
+    saveStarshipSettings(normalized);
+}
 
-    const currentToml = loadStarshipToml();
-    const nextToml = mergeSettingsIntoToml(normalized, currentToml);
-    saveStarshipToml(nextToml);
+export function settingsToToml(settings) {
+    return serializeStarshipSettings(normalizeSettings(settings));
 }

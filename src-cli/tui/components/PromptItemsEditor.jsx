@@ -3,125 +3,208 @@ import { Box, Text, useInput } from 'ink';
 
 import {
     addPromptItem,
-    cyclePromptItemType,
-    cyclePromptSeparator,
+    addPromptLine,
+    cyclePromptModule,
+    movePromptItem,
     removePromptItem,
-    togglePromptSeparatorInvert,
-    updateTextPromptItem,
+    removePromptLine,
+    togglePromptItemMerge,
+    updatePromptItem,
 } from '../../utils/settings-mutations.js';
-import { resolveSeparatorChar } from '../../utils/renderer.js';
+import { formatPromptItemLabel, formatPromptLineSummary } from '../../utils/prompt-format.js';
 
-export function PromptItemsEditor({ settings, onChange, onBack, interactive }) {
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [textEditMode, setTextEditMode] = useState(false);
-    const [textBuffer, setTextBuffer] = useState('');
-    const items = settings.prompt.items;
+function LayoutEditor({ settings, onChange, onBack, interactive }) {
+    const [mode, setMode] = useState('lines');
+    const [selectedLineIndex, setSelectedLineIndex] = useState(0);
+    const [selectedItemIndex, setSelectedItemIndex] = useState(0);
+    const [inputMode, setInputMode] = useState(null);
+    const [buffer, setBuffer] = useState('');
+    const lines = settings.prompt.lines;
+    const selectedLine = lines[selectedLineIndex] || [];
+    const selectedItem = selectedLine[selectedItemIndex];
 
     useInput(
         (input, key) => {
-            if (textEditMode) {
+            if (inputMode) {
                 if (key.escape) {
-                    setTextEditMode(false);
-                    setTextBuffer('');
+                    resetInputMode();
                     return;
                 }
 
                 if (key.return) {
-                    const nextSettings = updateTextPromptItem(settings, selectedIndex, textBuffer);
-                    onChange(nextSettings);
-                    setTextEditMode(false);
-                    setTextBuffer('');
+                    if (selectedItem) {
+                        if (inputMode === 'text') {
+                            onChange(
+                                updatePromptItem(settings, selectedLineIndex, selectedItemIndex, {
+                                    text: buffer,
+                                })
+                            );
+                        }
+                        if (inputMode === 'style' && selectedItem.type === 'styledText') {
+                            onChange(
+                                updatePromptItem(settings, selectedLineIndex, selectedItemIndex, {
+                                    style: buffer || 'none',
+                                })
+                            );
+                        }
+                    }
+                    resetInputMode();
                     return;
                 }
 
                 if (key.backspace || key.delete) {
-                    setTextBuffer((previous) => previous.slice(0, -1));
+                    setBuffer((previous) => previous.slice(0, -1));
                     return;
                 }
 
                 if (input) {
-                    setTextBuffer((previous) => previous + input);
+                    setBuffer((previous) => previous + input);
+                }
+                return;
+            }
+
+            if (mode === 'lines') {
+                if (key.escape) {
+                    onBack();
+                    return;
+                }
+
+                if (key.upArrow) {
+                    setSelectedLineIndex((previous) => clamp(previous - 1, 0, lines.length - 1));
+                    return;
+                }
+
+                if (key.downArrow) {
+                    setSelectedLineIndex((previous) => clamp(previous + 1, 0, lines.length - 1));
+                    return;
+                }
+
+                if (input === 'a' || input === 'A') {
+                    const result = addPromptLine(settings, selectedLineIndex);
+                    onChange(result.settings);
+                    setSelectedLineIndex(result.lineIndex);
+                    return;
+                }
+
+                if (input === 'd' || input === 'D') {
+                    const result = removePromptLine(settings, selectedLineIndex);
+                    onChange(result.settings);
+                    setSelectedLineIndex(result.lineIndex);
+                    setSelectedItemIndex(0);
+                    return;
+                }
+
+                if (key.return || input === 'e' || input === 'E') {
+                    setMode('items');
+                    setSelectedItemIndex(0);
                 }
                 return;
             }
 
             if (key.escape) {
-                onBack();
+                setMode('lines');
+                resetInputMode();
                 return;
             }
 
             if (key.upArrow) {
-                setSelectedIndex((previous) => Math.max(0, previous - 1));
+                setSelectedItemIndex((previous) =>
+                    clamp(previous - 1, 0, Math.max(0, selectedLine.length - 1))
+                );
                 return;
             }
 
             if (key.downArrow) {
-                setSelectedIndex((previous) =>
-                    Math.min(Math.max(0, items.length - 1), previous + 1)
+                setSelectedItemIndex((previous) =>
+                    clamp(previous + 1, 0, Math.max(0, selectedLine.length - 1))
                 );
                 return;
             }
 
             if (key.leftArrow) {
-                onChange(handleLeftRight(settings, selectedIndex, -1));
+                onChange(cyclePromptModule(settings, selectedLineIndex, selectedItemIndex, -1));
                 return;
             }
 
             if (key.rightArrow) {
-                onChange(handleLeftRight(settings, selectedIndex, 1));
+                onChange(cyclePromptModule(settings, selectedLineIndex, selectedItemIndex, 1));
                 return;
             }
 
             if (input === 'a' || input === 'A') {
-                const { settings: nextSettings, index } = addPromptItem(
+                const result = addPromptItem(
                     settings,
-                    selectedIndex + 1,
+                    selectedLineIndex,
+                    selectedItemIndex,
+                    'styledText'
+                );
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
+                return;
+            }
+
+            if (input === 'm' || input === 'M') {
+                const result = addPromptItem(
+                    settings,
+                    selectedLineIndex,
+                    selectedItemIndex,
                     'module'
                 );
-                onChange(nextSettings);
-                setSelectedIndex(index);
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
                 return;
             }
 
-            if (input === 's' || input === 'S') {
-                const { settings: nextSettings, index } = addPromptItem(
+            if (input === 'r' || input === 'R') {
+                const result = addPromptItem(
                     settings,
-                    selectedIndex + 1,
-                    'separator'
+                    selectedLineIndex,
+                    selectedItemIndex,
+                    'rawText'
                 );
-                onChange(nextSettings);
-                setSelectedIndex(index);
-                return;
-            }
-
-            if (input === 't' || input === 'T') {
-                const { settings: nextSettings, index } = addPromptItem(
-                    settings,
-                    selectedIndex + 1,
-                    'text'
-                );
-                onChange(nextSettings);
-                setSelectedIndex(index);
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
                 return;
             }
 
             if (input === 'd' || input === 'D') {
-                const { settings: nextSettings, index } = removePromptItem(settings, selectedIndex);
-                onChange(nextSettings);
-                setSelectedIndex(index);
+                const result = removePromptItem(settings, selectedLineIndex, selectedItemIndex);
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
                 return;
             }
 
-            if (input === 'v' || input === 'V') {
-                onChange(togglePromptSeparatorInvert(settings, selectedIndex));
+            if (input === 'u' || input === 'U') {
+                const result = movePromptItem(settings, selectedLineIndex, selectedItemIndex, -1);
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
+                return;
+            }
+
+            if (input === 'j' || input === 'J') {
+                const result = movePromptItem(settings, selectedLineIndex, selectedItemIndex, 1);
+                onChange(result.settings);
+                setSelectedItemIndex(result.itemIndex);
+                return;
+            }
+
+            if (input === 't' || input === 'T') {
+                onChange(togglePromptItemMerge(settings, selectedLineIndex, selectedItemIndex));
                 return;
             }
 
             if (input === 'e' || input === 'E' || key.return) {
-                const selected = items[selectedIndex];
-                if (selected?.type === 'text') {
-                    setTextBuffer(selected.value ?? '');
-                    setTextEditMode(true);
+                if (selectedItem?.type === 'styledText' || selectedItem?.type === 'rawText') {
+                    setInputMode('text');
+                    setBuffer(selectedItem.text || '');
+                }
+                return;
+            }
+
+            if (input === 's' || input === 'S') {
+                if (selectedItem?.type === 'styledText') {
+                    setInputMode('style');
+                    setBuffer(selectedItem.style || 'none');
                 }
             }
         },
@@ -129,73 +212,78 @@ export function PromptItemsEditor({ settings, onChange, onBack, interactive }) {
     );
 
     const helpText = useMemo(() => {
-        if (textEditMode) {
-            return 'Text edit mode: type to edit, Enter save, ESC cancel';
+        if (inputMode === 'text') {
+            return 'Editing item text. Enter save  ESC cancel';
         }
-
-        return '↑↓ select, ←→ cycle module/separator, A add module, S add separator, T add text, D delete, V invert separator, E edit text, ESC back';
-    }, [textEditMode]);
+        if (inputMode === 'style') {
+            return 'Editing Starship style string. Enter save  ESC cancel';
+        }
+        if (mode === 'lines') {
+            return '↑↓ select line  Enter edit line  A add line  D delete line  ESC back';
+        }
+        return '↑↓ select item  ←→ cycle module  A add styled  M add module  R add raw  U/J move  T merge next  E edit text  S edit style  D delete  ESC lines';
+    }, [inputMode, mode]);
 
     return (
-        <Box flexDirection="column">
-            <Text bold>Prompt Items Editor</Text>
+        <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+            <Text bold>Prompt Layout</Text>
+            <Text dimColor>
+                Only real content items appear here. Implicit powerline frame lives in Powerline
+                Frame.
+            </Text>
             <Text dimColor>{helpText}</Text>
-            {textEditMode && (
+            {inputMode && (
                 <Text color="cyan">
-                    text: {textBuffer}
+                    {inputMode}: {buffer}
                     <Text inverse> </Text>
                 </Text>
             )}
-            <Box flexDirection="column" marginTop={1}>
-                {items.length === 0 ? (
-                    <Text dimColor>(empty) Press A/S/T to add first item.</Text>
-                ) : (
-                    items.map((item, index) => {
-                        const selected = index === selectedIndex;
+
+            {mode === 'lines' ? (
+                <Box marginTop={1} flexDirection="column">
+                    {lines.map((line, index) => {
+                        const selected = index === selectedLineIndex;
                         return (
-                            <Text key={item.id} color={selected ? 'green' : undefined}>
+                            <Text key={`line-${index}`} color={selected ? 'green' : undefined}>
                                 {selected ? '▶ ' : '  '}
-                                {formatPromptItem(item, settings)}
+                                {`Line ${index + 1}`.padEnd(8)}
+                                {formatPromptLineSummary(line)}
                             </Text>
                         );
-                    })
-                )}
-            </Box>
+                    })}
+                </Box>
+            ) : (
+                <Box marginTop={1} flexDirection="column">
+                    <Text dimColor>{`Editing Line ${selectedLineIndex + 1}`}</Text>
+                    {selectedLine.length === 0 ? (
+                        <Text dimColor>(empty)</Text>
+                    ) : (
+                        selectedLine.map((item, index) => {
+                            const selected = index === selectedItemIndex;
+                            return (
+                                <Text key={item.id} color={selected ? 'green' : undefined}>
+                                    {selected ? '▶ ' : '  '}
+                                    {formatPromptItemLabel(item, index)}
+                                </Text>
+                            );
+                        })
+                    )}
+                </Box>
+            )}
         </Box>
     );
+
+    function resetInputMode() {
+        setInputMode(null);
+        setBuffer('');
+    }
 }
 
-function handleLeftRight(settings, selectedIndex, step) {
-    const item = settings.prompt.items[selectedIndex];
-    if (!item) {
-        return settings;
+function clamp(value, min, max) {
+    if (max < min) {
+        return min;
     }
-
-    if (item.type === 'module') {
-        return cyclePromptItemType(settings, selectedIndex, step);
-    }
-
-    if (item.type === 'separator') {
-        return cyclePromptSeparator(settings, selectedIndex, step);
-    }
-
-    return settings;
+    return Math.max(min, Math.min(value, max));
 }
 
-function formatPromptItem(item, settings) {
-    if (item.type === 'module') {
-        return `[module] ${item.module}`;
-    }
-
-    if (item.type === 'separator') {
-        const char = resolveSeparatorChar(item, settings);
-        const invertMark = item.invertBackground ? ' (inverted)' : '';
-        return `[separator] "${char}" preset#${item.separatorIndex}${invertMark}`;
-    }
-
-    if (item.type === 'text') {
-        return `[text] "${item.value}"`;
-    }
-
-    return `[unknown] ${JSON.stringify(item)}`;
-}
+export { LayoutEditor };

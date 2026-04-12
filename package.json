@@ -11,6 +11,7 @@
     "format:write": "prettier --write src-cli --cache"
   },
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "chalk": "^5.4.1",
     "ink": "^6.2.3",
     "react": "^19.2.0"

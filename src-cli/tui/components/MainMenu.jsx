@@ -2,39 +2,40 @@ import React, { useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 
 const MENU_ITEMS = [
-    { key: 'prompt-items', label: 'Prompt Items' },
-    { key: 'separator-presets', label: 'Separator Presets' },
-    { key: 'character', label: 'Character Module' },
-    { key: 'directory', label: 'Directory Module' },
-    { key: 'git_branch', label: 'Git Branch Module' },
-    { key: 'git_status', label: 'Git Status Module' },
-    { key: 'time', label: 'Time Module' },
-    { key: 'save', label: 'Save To starship.toml' },
-    { key: 'save-exit', label: 'Save And Exit' },
-    { key: 'exit', label: 'Exit' },
+    {
+        key: 'layout',
+        label: 'Prompt Layout',
+        detail: 'Edit content lines only.',
+    },
+    {
+        key: 'powerline-frame',
+        label: 'Powerline Frame',
+        detail: 'Edit hidden separator and caps.',
+    },
+    { key: 'modules', label: 'Modules', detail: 'Module fields and nested maps.' },
+    { key: 'save', label: 'Save', detail: 'Write starship.toml.' },
+    { key: 'reload', label: 'Reload', detail: 'Reload current config.' },
+    { key: 'exit', label: 'Exit', detail: 'Leave the TUI.' },
 ];
 
-export function MainMenu({ onSelect, interactive }) {
+function MainMenu({ dirty, onSelect, interactive }) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const items = useMemo(() => MENU_ITEMS, []);
 
     useInput(
         (input, key) => {
             if (key.upArrow) {
-                setSelectedIndex((previous) => normalizeIndex(previous - 1, items.length));
+                setSelectedIndex((previous) => normalizeCircularIndex(previous - 1, items.length));
                 return;
             }
 
             if (key.downArrow) {
-                setSelectedIndex((previous) => normalizeIndex(previous + 1, items.length));
+                setSelectedIndex((previous) => normalizeCircularIndex(previous + 1, items.length));
                 return;
             }
 
             if (key.return) {
-                const selected = items[selectedIndex];
-                if (selected) {
-                    onSelect(selected.key);
-                }
+                onSelect(items[selectedIndex]?.key);
                 return;
             }
 
@@ -46,16 +47,20 @@ export function MainMenu({ onSelect, interactive }) {
     );
 
     return (
-        <Box flexDirection="column">
+        <Box flexDirection="column" borderStyle="round" borderColor="green" paddingX={1}>
             <Text bold>Main Menu</Text>
-            <Text dimColor>↑↓ move, Enter confirm, S quick save</Text>
-            <Box flexDirection="column" marginTop={1}>
+            <Text dimColor>
+                {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
+            </Text>
+            <Text dimColor>↑↓ move Enter open S quick save</Text>
+            <Box marginTop={1} flexDirection="column">
                 {items.map((item, index) => {
                     const selected = index === selectedIndex;
                     return (
                         <Text key={item.key} color={selected ? 'green' : undefined}>
                             {selected ? '▶ ' : '  '}
-                            {item.label}
+                            {item.label.padEnd(18)}
+                            <Text dimColor>{item.detail}</Text>
                         </Text>
                     );
                 })}
@@ -64,9 +69,12 @@ export function MainMenu({ onSelect, interactive }) {
     );
 }
 
-function normalizeIndex(index, length) {
+function normalizeCircularIndex(index, length) {
     if (length <= 0) {
         return 0;
     }
+
     return ((index % length) + length) % length;
 }
+
+export { MainMenu };

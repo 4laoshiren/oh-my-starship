@@ -1,65 +1,50 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 
-import { MainMenu } from './components/MainMenu.jsx';
-import { ModuleEditor } from './components/ModuleEditor.jsx';
-import { PromptItemsEditor } from './components/PromptItemsEditor.jsx';
-import { SeparatorEditor } from './components/SeparatorEditor.jsx';
-import { StatusPreview } from './components/StatusPreview.jsx';
+import { getStarshipTomlPath } from '../utils/paths.js';
 import { loadInitialSettings, persistSettings } from '../utils/settings-service.js';
+import { LayoutEditor } from './components/PromptItemsEditor.jsx';
+import { MainMenu } from './components/MainMenu.jsx';
+import { MapEditor } from './components/MapEditor.jsx';
+import { ModuleEditor } from './components/ModuleEditor.jsx';
+import { ModuleList } from './components/ModuleList.jsx';
+import { PowerlineFrameEditor } from './components/SeparatorEditor.jsx';
+import { StatusPreview } from './components/StatusPreview.jsx';
 
-const MODULE_FIELD_MAP = {
-    character: [
-        { key: 'success_symbol', label: 'success_symbol', type: 'string' },
-        { key: 'error_symbol', label: 'error_symbol', type: 'string' },
-        { key: 'disabled', label: 'disabled', type: 'boolean' },
-    ],
-    directory: [
-        { key: 'truncation_length', label: 'truncation_length', type: 'number' },
-        { key: 'truncation_symbol', label: 'truncation_symbol', type: 'string' },
-        { key: 'style', label: 'style', type: 'string' },
-        { key: 'disabled', label: 'disabled', type: 'boolean' },
-    ],
-    git_branch: [
-        { key: 'symbol', label: 'symbol', type: 'string' },
-        { key: 'style', label: 'style', type: 'string' },
-        { key: 'disabled', label: 'disabled', type: 'boolean' },
-    ],
-    git_status: [
-        { key: 'style', label: 'style', type: 'string' },
-        { key: 'ahead', label: 'ahead', type: 'string' },
-        { key: 'behind', label: 'behind', type: 'string' },
-        { key: 'modified', label: 'modified', type: 'string' },
-        { key: 'staged', label: 'staged', type: 'string' },
-        { key: 'deleted', label: 'deleted', type: 'string' },
-        { key: 'untracked', label: 'untracked', type: 'string' },
-        { key: 'disabled', label: 'disabled', type: 'boolean' },
-    ],
-    time: [
-        { key: 'time_format', label: 'time_format', type: 'string' },
-        { key: 'style', label: 'style', type: 'string' },
-        { key: 'use_12hr', label: 'use_12hr', type: 'boolean' },
-        { key: 'disabled', label: 'disabled', type: 'boolean' },
-    ],
+const SCREENS = {
+    MAIN: 'main',
+    LAYOUT: 'layout',
+    POWERLINE_FRAME: 'powerline-frame',
+    MODULES: 'modules',
+    MODULE_EDITOR: 'module-editor',
+    MAP_EDITOR: 'map-editor',
 };
 
-export function App() {
+function App() {
     const { exit } = useApp();
     const [settings, setSettings] = useState(() => loadInitialSettings());
-    const [screen, setScreen] = useState('main');
-    const [dirty, setDirty] = useState(false);
+    const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(settings));
+    const [screen, setScreen] = useState(SCREENS.MAIN);
+    const [selectedModule, setSelectedModule] = useState('hostname');
+    const [selectedMapField, setSelectedMapField] = useState(null);
+    const [terminalWidth, setTerminalWidth] = useState(process.stdout.columns || 120);
+    const [flash, setFlash] = useState({ color: 'green', text: 'Ready' });
     const interactive = Boolean(process.stdin.isTTY && process.stdin.setRawMode);
-    const [statusMessage, setStatusMessage] = useState({
-        color: 'green',
-        text: 'Ready',
-    });
+    const dirty = useMemo(
+        () => JSON.stringify(settings) !== savedSnapshot,
+        [savedSnapshot, settings]
+    );
 
-    const activeModule = useMemo(() => {
-        if (!Object.hasOwn(MODULE_FIELD_MAP, screen)) {
-            return null;
-        }
-        return screen;
-    }, [screen]);
+    useEffect(() => {
+        const onResize = () => {
+            setTerminalWidth(process.stdout.columns || 120);
+        };
+
+        process.stdout.on('resize', onResize);
+        return () => {
+            process.stdout.off('resize', onResize);
+        };
+    }, []);
 
     useInput(
         (input, key) => {
@@ -69,159 +54,151 @@ export function App() {
             }
 
             if (key.ctrl && input === 's') {
-                safeSave(settings, {
-                    onSuccess: () => {
-                        setDirty(false);
-                        setStatusMessage({
-                            color: 'green',
-                            text: 'Saved to ~/.config/starship.toml',
-                        });
-                    },
-                    onError: (error) => {
-                        setStatusMessage({ color: 'red', text: `Save failed: ${error.message}` });
-                    },
-                });
+                saveCurrentSettings();
             }
         },
         { isActive: interactive }
     );
 
-    const updateSettings = (nextSettings) => {
+    function updateSettings(nextSettings) {
         setSettings(nextSettings);
-        setDirty(true);
-    };
+        setFlash({ color: 'yellow', text: 'Preview updated. Save with Ctrl+S.' });
+    }
 
-    const handleMainSelect = (action) => {
-        if (action === 'prompt-items') {
-            setScreen('prompt-items');
+    function reloadSettings() {
+        const next = loadInitialSettings();
+        setSettings(next);
+        setSavedSnapshot(JSON.stringify(next));
+        setFlash({ color: 'green', text: 'Reloaded from starship.toml' });
+    }
+
+    function saveCurrentSettings() {
+        try {
+            persistSettings(settings);
+            setSavedSnapshot(JSON.stringify(settings));
+            setFlash({ color: 'green', text: `Saved to ${getStarshipTomlPath()}` });
+        } catch (error) {
+            setFlash({
+                color: 'red',
+                text: error instanceof Error ? error.message : 'Save failed',
+            });
+        }
+    }
+
+    function handleMainSelect(action) {
+        if (action === 'layout') {
+            setScreen(SCREENS.LAYOUT);
             return;
         }
-
-        if (action === 'separator-presets') {
-            setScreen('separator-presets');
+        if (action === 'powerline-frame') {
+            setScreen(SCREENS.POWERLINE_FRAME);
             return;
         }
-
+        if (action === 'modules') {
+            setScreen(SCREENS.MODULES);
+            return;
+        }
         if (action === 'save') {
-            safeSave(settings, {
-                onSuccess: () => {
-                    setDirty(false);
-                    setStatusMessage({ color: 'green', text: 'Saved to ~/.config/starship.toml' });
-                },
-                onError: (error) => {
-                    setStatusMessage({ color: 'red', text: `Save failed: ${error.message}` });
-                },
-            });
+            saveCurrentSettings();
             return;
         }
-
-        if (action === 'save-exit') {
-            safeSave(settings, {
-                onSuccess: () => {
-                    exit();
-                },
-                onError: (error) => {
-                    setStatusMessage({ color: 'red', text: `Save failed: ${error.message}` });
-                },
-            });
+        if (action === 'reload') {
+            reloadSettings();
             return;
         }
-
         if (action === 'exit') {
             exit();
-            return;
         }
+    }
 
-        if (Object.hasOwn(MODULE_FIELD_MAP, action)) {
-            setScreen(action);
-        }
-    };
-
-    const renderBody = () => {
-        if (screen === 'main') {
-            return <MainMenu onSelect={handleMainSelect} interactive={interactive} />;
-        }
-
-        if (screen === 'prompt-items') {
+    function renderScreen() {
+        if (screen === SCREENS.LAYOUT) {
             return (
-                <PromptItemsEditor
+                <LayoutEditor
                     settings={settings}
                     onChange={updateSettings}
-                    onBack={() => setScreen('main')}
+                    onBack={() => setScreen(SCREENS.MAIN)}
                     interactive={interactive}
                 />
             );
         }
 
-        if (screen === 'separator-presets') {
+        if (screen === SCREENS.POWERLINE_FRAME) {
             return (
-                <SeparatorEditor
+                <PowerlineFrameEditor
                     settings={settings}
                     onChange={updateSettings}
-                    onBack={() => setScreen('main')}
+                    onBack={() => setScreen(SCREENS.MAIN)}
                     interactive={interactive}
                 />
             );
         }
 
-        if (activeModule) {
+        if (screen === SCREENS.MODULES) {
+            return (
+                <ModuleList
+                    settings={settings}
+                    onBack={() => setScreen(SCREENS.MAIN)}
+                    onSelect={(moduleKey) => {
+                        if (!moduleKey) {
+                            return;
+                        }
+                        setSelectedModule(moduleKey);
+                        setScreen(SCREENS.MODULE_EDITOR);
+                    }}
+                    interactive={interactive}
+                />
+            );
+        }
+
+        if (screen === SCREENS.MODULE_EDITOR) {
             return (
                 <ModuleEditor
-                    moduleKey={activeModule}
-                    moduleConfig={settings.modules[activeModule]}
-                    fields={MODULE_FIELD_MAP[activeModule]}
-                    onChange={(updatedModule) => {
-                        updateSettings({
-                            ...settings,
-                            modules: {
-                                ...settings.modules,
-                                [activeModule]: updatedModule,
-                            },
-                        });
+                    settings={settings}
+                    moduleKey={selectedModule}
+                    onBack={() => setScreen(SCREENS.MODULES)}
+                    onChange={updateSettings}
+                    onOpenMap={(moduleKey, fieldKey) => {
+                        setSelectedModule(moduleKey);
+                        setSelectedMapField(fieldKey);
+                        setScreen(SCREENS.MAP_EDITOR);
                     }}
-                    onBack={() => setScreen('main')}
                     interactive={interactive}
                 />
             );
         }
 
-        return (
-            <Box flexDirection="column">
-                <Text color="red">Unknown screen: {screen}</Text>
-                <Text dimColor>Press Ctrl+C to quit.</Text>
-            </Box>
-        );
-    };
+        if (screen === SCREENS.MAP_EDITOR) {
+            return (
+                <MapEditor
+                    settings={settings}
+                    moduleKey={selectedModule}
+                    fieldKey={selectedMapField}
+                    onBack={() => setScreen(SCREENS.MODULE_EDITOR)}
+                    onChange={updateSettings}
+                    interactive={interactive}
+                />
+            );
+        }
+
+        return <MainMenu dirty={dirty} onSelect={handleMainSelect} interactive={interactive} />;
+    }
 
     return (
         <Box flexDirection="column">
-            <StatusPreview settings={settings} dirty={dirty} />
+            <StatusPreview settings={settings} dirty={dirty} terminalWidth={terminalWidth} />
             <Box marginTop={1}>
-                <Text color={statusMessage.color}>{statusMessage.text}</Text>
+                <Text color={flash.color}>{flash.text}</Text>
+                <Text dimColor>{`  Config: ${getStarshipTomlPath()}`}</Text>
             </Box>
             {!interactive && (
-                <Box marginTop={1}>
-                    <Text color="yellow">
-                        Non-interactive terminal detected. Keyboard input is disabled.
-                    </Text>
-                </Box>
+                <Text color="yellow">
+                    Non-interactive terminal detected. Keyboard input is disabled.
+                </Text>
             )}
-            <Box marginTop={1} flexDirection="column">
-                {renderBody()}
-            </Box>
+            <Box marginTop={1}>{renderScreen()}</Box>
         </Box>
     );
 }
 
-function safeSave(settings, { onSuccess, onError }) {
-    try {
-        persistSettings(settings);
-        onSuccess();
-    } catch (error) {
-        if (error instanceof Error) {
-            onError(error);
-            return;
-        }
-        onError(new Error('Unknown save error'));
-    }
-}
+export { App };
