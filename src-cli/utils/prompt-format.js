@@ -116,14 +116,11 @@ export function formatPromptItemLabel(item, index) {
     const suffix = item.merge ? '  (merge→)' : '';
 
     if (item.type === 'module') {
-        return `${slot}  module      $${item.module}${suffix}`;
+        return `${slot}  $${item.module}${suffix}`;
     }
 
-    if (item.type === 'styledText') {
-        return `${slot}  styled      "${printableText(item.text)}"  (${item.style || 'none'})${suffix}`;
-    }
-
-    return `${slot}  raw         "${printableText(item.text)}"${suffix}`;
+    const styleLabel = item.type === 'styledText' ? item.style || 'none' : 'none';
+    return `${slot}  "${printableText(item.text)}"  (${styleLabel})${suffix}`;
 }
 
 export function formatPromptLineSummary(line) {

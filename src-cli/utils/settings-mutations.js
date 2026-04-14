@@ -117,6 +117,27 @@ export function updatePromptItem(settings, lineIndex, itemIndex, patch) {
     return normalizeSettings(next);
 }
 
+export function replacePromptItem(settings, lineIndex, itemIndex, type, patch = {}) {
+    const next = cloneSettings(settings);
+    const line = next.prompt.lines[lineIndex] || [];
+    const currentItem = line[itemIndex];
+    if (!currentItem) {
+        return normalizeSettings(next);
+    }
+
+    const nextItem = createDefaultPromptItem(type);
+
+    // 中文注释：切换 slot 类型时保留当前位置和 merge 关系，内容重置为目标类型默认值。
+    nextItem.id = currentItem.id || nextItem.id;
+    nextItem.merge = Boolean(currentItem.merge);
+    Object.assign(nextItem, patch);
+
+    line[itemIndex] = nextItem;
+    next.prompt.lines[lineIndex] = line;
+
+    return normalizeSettings(next);
+}
+
 export function togglePromptItemMerge(settings, lineIndex, itemIndex) {
     const next = cloneSettings(settings);
     const line = next.prompt.lines[lineIndex] || [];
