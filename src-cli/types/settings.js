@@ -1,4 +1,4 @@
-export const APP_SCHEMA_VERSION = 3;
+export const APP_SCHEMA_VERSION = 4;
 
 export const STARSHIP_SCHEMA_URL = 'https://starship.rs/config-schema.json';
 
@@ -237,17 +237,26 @@ export function createDefaultSettings() {
         prompt: {
             lines: createDefaultPromptLines(),
         },
-        powerline: createDefaultPowerline(),
         modules: structuredClone(DEFAULT_MODULES),
     };
 }
 
 export function createPromptItem(type, data = {}) {
+    const { id, merge, ...rest } = data;
+
+    if (type === 'frame') {
+        return {
+            id: id || createId(),
+            type,
+            glyph: typeof data.glyph === 'string' ? data.glyph : data.text || '',
+            invert: Boolean(data.invert),
+        };
+    }
+
     return {
-        id: data.id || createId(),
+        id: id || createId(),
         type,
-        merge: Boolean(data.merge),
-        ...data,
+        ...rest,
     };
 }
 
@@ -260,7 +269,7 @@ export function createId() {
 export function normalizeSettings(input) {
     const fallback = createDefaultSettings();
     const record = isRecord(input) ? input : {};
-    const prompt = normalizePrompt(record.prompt, fallback.prompt.lines);
+    const prompt = normalizePrompt(record.prompt, fallback.prompt.lines, record.powerline);
 
     return {
         version: APP_SCHEMA_VERSION,
@@ -269,7 +278,6 @@ export function normalizeSettings(input) {
                 ? record.schemaUrl
                 : STARSHIP_SCHEMA_URL,
         prompt,
-        powerline: normalizePowerline(record.powerline, prompt.lines.length),
         modules: normalizeModules(record.modules),
     };
 }
@@ -280,43 +288,46 @@ function createDefaultPromptLines() {
             createPromptItem('styledText', {
                 text: '░▒▓',
                 style: '#a3aed2',
-                merge: true,
             }),
             createPromptItem('styledText', {
                 text: '  ',
                 style: 'fg:#090c0c bg:#a3aed2',
             }),
+            createPromptItem('frame', { glyph: '' }),
             createPromptItem('module', { module: 'hostname' }),
+            createPromptItem('frame', { glyph: '' }),
             createPromptItem('module', { module: 'directory' }),
-            createPromptItem('module', { module: 'git_branch', merge: true }),
+            createPromptItem('frame', { glyph: '' }),
+            createPromptItem('module', { module: 'git_branch' }),
             createPromptItem('module', { module: 'git_status' }),
-            createPromptItem('module', { module: 'nodejs', merge: true }),
-            createPromptItem('module', { module: 'python', merge: true }),
-            createPromptItem('module', { module: 'rust', merge: true }),
-            createPromptItem('module', { module: 'golang', merge: true }),
-            createPromptItem('module', { module: 'php', merge: true }),
-            createPromptItem('module', { module: 'java', merge: true }),
-            createPromptItem('module', { module: 'ruby', merge: true }),
-            createPromptItem('module', { module: 'c', merge: true }),
+            createPromptItem('frame', { glyph: '' }),
+            createPromptItem('module', { module: 'nodejs' }),
+            createPromptItem('module', { module: 'python' }),
+            createPromptItem('module', { module: 'rust' }),
+            createPromptItem('module', { module: 'golang' }),
+            createPromptItem('module', { module: 'php' }),
+            createPromptItem('module', { module: 'java' }),
+            createPromptItem('module', { module: 'ruby' }),
+            createPromptItem('module', { module: 'c' }),
             createPromptItem('module', { module: 'swift' }),
+            createPromptItem('frame', { glyph: '' }),
             createPromptItem('module', { module: 'time' }),
+            createPromptItem('frame', { glyph: ' ' }),
         ],
         [createPromptItem('module', { module: 'character' })],
     ];
 }
 
-function createDefaultPowerline() {
-    return {
-        enabled: true,
-        separators: [''],
-        separatorInvertBackground: [false],
-        startCaps: ['', ''],
-        endCaps: [' ', ''],
-    };
-}
-
-function normalizePrompt(prompt, fallbackLines) {
+function normalizePrompt(prompt, fallbackLines, legacyPowerline) {
     if (isRecord(prompt) && Array.isArray(prompt.lines)) {
+        if (shouldMigrateLegacyPowerline(prompt.lines, legacyPowerline)) {
+            return {
+                lines: normalizePromptLines(
+                    convertLegacyPowerlineLinesToExplicitFrames(prompt.lines, legacyPowerline)
+                ),
+            };
+        }
+
         return {
             lines: normalizePromptLines(prompt.lines),
         };
@@ -364,7 +375,6 @@ function normalizePromptItem(item) {
         return createPromptItem('module', {
             id: item.id,
             module: item.module,
-            merge: Boolean(item.merge),
         });
     }
 
@@ -373,7 +383,6 @@ function normalizePromptItem(item) {
             id: item.id,
             text: typeof item.text === 'string' ? item.text : '',
             style: typeof item.style === 'string' ? item.style : 'none',
-            merge: Boolean(item.merge),
         });
     }
 
@@ -381,28 +390,25 @@ function normalizePromptItem(item) {
         return createPromptItem('rawText', {
             id: item.id,
             text: typeof item.text === 'string' ? item.text : '',
-            merge: Boolean(item.merge),
+        });
+    }
+
+    if (item.type === 'frame') {
+        const glyph =
+            typeof item.glyph === 'string'
+                ? item.glyph
+                : typeof item.text === 'string'
+                  ? item.text
+                  : '';
+
+        return createPromptItem('frame', {
+            id: item.id,
+            glyph,
+            invert: Boolean(item.invert),
         });
     }
 
     return null;
-}
-
-function normalizePowerline(powerline, lineCount) {
-    const fallback = createDefaultPowerline();
-    const record = isRecord(powerline) ? powerline : {};
-
-    return {
-        enabled: typeof record.enabled === 'boolean' ? record.enabled : fallback.enabled,
-        separators: normalizeStringArray(record.separators, fallback.separators, 1),
-        separatorInvertBackground: normalizeBooleanArray(
-            record.separatorInvertBackground,
-            fallback.separatorInvertBackground,
-            1
-        ),
-        startCaps: normalizeStringArray(record.startCaps, fallback.startCaps, lineCount),
-        endCaps: normalizeStringArray(record.endCaps, fallback.endCaps, lineCount),
-    };
 }
 
 function normalizeModules(modules) {
@@ -424,32 +430,9 @@ function normalizeModules(modules) {
     return next;
 }
 
-function normalizeStringArray(value, fallback, minLength) {
-    const source = Array.isArray(value) ? value : fallback;
-    const next = source.filter((entry) => typeof entry === 'string').map((entry) => entry);
-
-    while (next.length < minLength) {
-        next.push(fallback[next.length] ?? '');
-    }
-
-    return next;
-}
-
-function normalizeBooleanArray(value, fallback, minLength) {
-    const source = Array.isArray(value) ? value : fallback;
-    const next = source.filter((entry) => typeof entry === 'boolean').map((entry) => entry);
-
-    while (next.length < minLength) {
-        next.push(Boolean(fallback[next.length]));
-    }
-
-    return next;
-}
-
 function convertLegacyTokensToLines(tokens) {
     const lines = [[]];
     let currentLine = lines[0];
-    let hadExplicitFrameSinceLastItem = false;
 
     for (const token of tokens) {
         if (!isRecord(token) || typeof token.type !== 'string') {
@@ -459,14 +442,17 @@ function convertLegacyTokensToLines(tokens) {
         if (token.type === 'newline') {
             currentLine = [];
             lines.push(currentLine);
-            hadExplicitFrameSinceLastItem = false;
             continue;
         }
 
         if (isLegacyFrameToken(token)) {
-            if (currentLine.length > 0) {
-                hadExplicitFrameSinceLastItem = true;
-            }
+            currentLine.push(
+                createPromptItem('frame', {
+                    id: token.id,
+                    glyph: token.text,
+                    invert: Boolean(token.invert),
+                })
+            );
             continue;
         }
 
@@ -475,18 +461,106 @@ function convertLegacyTokensToLines(tokens) {
             continue;
         }
 
-        if (currentLine.length > 0 && !hadExplicitFrameSinceLastItem) {
-            const previous = currentLine[currentLine.length - 1];
-            if (previous) {
-                previous.merge = true;
-            }
-        }
-
         currentLine.push(item);
-        hadExplicitFrameSinceLastItem = false;
     }
 
     return lines;
+}
+
+function shouldMigrateLegacyPowerline(lines, legacyPowerline) {
+    if (!Array.isArray(lines)) {
+        return false;
+    }
+
+    const hasExplicitFrame = lines.some((line) =>
+        Array.isArray(line) ? line.some((item) => item?.type === 'frame') : false
+    );
+    if (hasExplicitFrame) {
+        return false;
+    }
+
+    const hasLegacyMerge = lines.some((line) =>
+        Array.isArray(line) ? line.some((item) => isRecord(item) && 'merge' in item) : false
+    );
+
+    return hasLegacyMerge || isRecord(legacyPowerline);
+}
+
+function convertLegacyPowerlineLinesToExplicitFrames(lines, legacyPowerline) {
+    const powerline = normalizeLegacyPowerline(legacyPowerline);
+    const nextLines = [];
+    let separatorSlotIndex = 0;
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const line = Array.isArray(lines[lineIndex]) ? lines[lineIndex] : [];
+        const nextLine = [];
+
+        if (powerline.enabled && powerline.startCaps[lineIndex]) {
+            nextLine.push(createPromptItem('frame', { glyph: powerline.startCaps[lineIndex] }));
+        }
+
+        for (let itemIndex = 0; itemIndex < line.length; itemIndex += 1) {
+            const rawItem = line[itemIndex];
+            const item = normalizePromptItem(rawItem);
+            if (!item) {
+                continue;
+            }
+
+            nextLine.push(item);
+
+            if (!powerline.enabled || itemIndex >= line.length - 1 || rawItem?.merge) {
+                continue;
+            }
+
+            const glyph = resolveLegacyPowerlineEntry(
+                powerline.separators,
+                separatorSlotIndex,
+                ''
+            );
+            const invert = Boolean(
+                resolveLegacyPowerlineEntry(
+                    powerline.separatorInvertBackground,
+                    separatorSlotIndex,
+                    false
+                )
+            );
+
+            nextLine.push(createPromptItem('frame', { glyph, invert }));
+            separatorSlotIndex += 1;
+        }
+
+        if (powerline.enabled && powerline.endCaps[lineIndex]) {
+            nextLine.push(createPromptItem('frame', { glyph: powerline.endCaps[lineIndex] }));
+        }
+
+        nextLines.push(nextLine);
+    }
+
+    return nextLines;
+}
+
+function normalizeLegacyPowerline(powerline) {
+    const record = isRecord(powerline) ? powerline : {};
+
+    return {
+        enabled: typeof record.enabled === 'boolean' ? record.enabled : false,
+        separators: normalizeLegacyArray(record.separators, ['']),
+        separatorInvertBackground: normalizeLegacyArray(record.separatorInvertBackground, [false]),
+        startCaps: normalizeLegacyArray(record.startCaps, []),
+        endCaps: normalizeLegacyArray(record.endCaps, []),
+    };
+}
+
+function normalizeLegacyArray(value, fallback) {
+    return (Array.isArray(value) ? value : fallback).slice();
+}
+
+function resolveLegacyPowerlineEntry(values, index, fallback) {
+    if (!Array.isArray(values) || values.length === 0) {
+        return fallback;
+    }
+
+    return values[Math.min(index, values.length - 1)] ?? values[0] ?? fallback;
 }
 
 function isLegacyFrameToken(token) {

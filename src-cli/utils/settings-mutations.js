@@ -1,8 +1,6 @@
 import {
-    END_CAP_PRESETS,
     MODULE_ORDER,
     SEPARATOR_PRESETS,
-    START_CAP_PRESETS,
     createPromptItem,
     normalizeSettings,
 } from '../types/settings.js';
@@ -126,10 +124,7 @@ export function replacePromptItem(settings, lineIndex, itemIndex, type, patch = 
     }
 
     const nextItem = createDefaultPromptItem(type);
-
-    // 中文注释：切换 slot 类型时保留当前位置和 merge 关系，内容重置为目标类型默认值。
     nextItem.id = currentItem.id || nextItem.id;
-    nextItem.merge = Boolean(currentItem.merge);
     Object.assign(nextItem, patch);
 
     line[itemIndex] = nextItem;
@@ -138,110 +133,37 @@ export function replacePromptItem(settings, lineIndex, itemIndex, type, patch = 
     return normalizeSettings(next);
 }
 
-export function togglePromptItemMerge(settings, lineIndex, itemIndex) {
+export function togglePromptFrameInvert(settings, lineIndex, itemIndex) {
     const next = cloneSettings(settings);
-    const line = next.prompt.lines[lineIndex] || [];
-    const item = line[itemIndex];
-    if (!item || itemIndex >= line.length - 1) {
+    const item = next.prompt.lines[lineIndex]?.[itemIndex];
+    if (!item || item.type !== 'frame') {
         return normalizeSettings(next);
     }
 
-    item.merge = !item.merge;
+    item.invert = !Boolean(item.invert);
     return normalizeSettings(next);
 }
 
-export function togglePowerlineEnabled(settings) {
+export function cyclePromptFrameGlyph(settings, lineIndex, itemIndex, step) {
     const next = cloneSettings(settings);
-    next.powerline.enabled = !Boolean(next.powerline.enabled);
-    return normalizeSettings(next);
-}
-
-export function cyclePowerlineSeparator(settings, slotIndex, step) {
-    return cyclePowerlineArrayEntry(settings, 'separators', slotIndex, SEPARATOR_PRESETS, step);
-}
-
-export function cyclePowerlineStartCap(settings, lineIndex, step) {
-    return cyclePowerlineArrayEntry(
-        settings,
-        'startCaps',
-        lineIndex,
-        [''].concat(START_CAP_PRESETS),
-        step
-    );
-}
-
-export function cyclePowerlineEndCap(settings, lineIndex, step) {
-    return cyclePowerlineArrayEntry(
-        settings,
-        'endCaps',
-        lineIndex,
-        [''].concat(END_CAP_PRESETS),
-        step
-    );
-}
-
-export function togglePowerlineSeparatorInvert(settings, slotIndex) {
-    const next = cloneSettings(settings);
-    const safeIndex = clamp(slotIndex, 0, next.powerline.separatorInvertBackground.length - 1);
-    next.powerline.separatorInvertBackground[safeIndex] =
-        !next.powerline.separatorInvertBackground[safeIndex];
-    return normalizeSettings(next);
-}
-
-export function insertPowerlineSeparator(settings, slotIndex, placement = 'after') {
-    const next = cloneSettings(settings);
-    const defaultSeparator = SEPARATOR_PRESETS[0] || '';
-    const safeIndex = clamp(slotIndex, 0, Math.max(0, next.powerline.separators.length - 1));
-    const insertIndex =
-        placement === 'before'
-            ? safeIndex
-            : next.powerline.separators.length === 0
-              ? 0
-              : safeIndex + 1;
-
-    next.powerline.separators.splice(insertIndex, 0, defaultSeparator);
-    next.powerline.separatorInvertBackground.splice(insertIndex, 0, false);
-
-    return {
-        settings: normalizeSettings(next),
-        slotIndex: insertIndex,
-    };
-}
-
-export function removePowerlineSeparator(settings, slotIndex) {
-    const next = cloneSettings(settings);
-
-    if (next.powerline.separators.length <= 1) {
-        next.powerline.separators = [SEPARATOR_PRESETS[0] || ''];
-        next.powerline.separatorInvertBackground = [false];
-        return {
-            settings: normalizeSettings(next),
-            slotIndex: 0,
-        };
+    const item = next.prompt.lines[lineIndex]?.[itemIndex];
+    if (!item || item.type !== 'frame') {
+        return normalizeSettings(next);
     }
 
-    const safeIndex = clamp(slotIndex, 0, next.powerline.separators.length - 1);
-    next.powerline.separators.splice(safeIndex, 1);
-    next.powerline.separatorInvertBackground.splice(safeIndex, 1);
+    const currentGlyph = item.glyph || SEPARATOR_PRESETS[0] || '';
+    const currentIndex = SEPARATOR_PRESETS.indexOf(currentGlyph);
+    const startIndex = currentIndex === -1 ? 0 : currentIndex;
+    item.glyph =
+        SEPARATOR_PRESETS[normalizeCircularIndex(startIndex + step, SEPARATOR_PRESETS.length)] ||
+        SEPARATOR_PRESETS[0] ||
+        '';
 
-    return {
-        settings: normalizeSettings(next),
-        slotIndex: clamp(safeIndex, 0, next.powerline.separators.length - 1),
-    };
-}
-
-export function resetPowerlineSeparators(settings) {
-    const next = cloneSettings(settings);
-    next.powerline.separators = [SEPARATOR_PRESETS[0] || ''];
-    next.powerline.separatorInvertBackground = [false];
     return normalizeSettings(next);
 }
 
-export function updatePowerlineArrayEntry(settings, key, index, value) {
-    const next = cloneSettings(settings);
-    ensurePowerlineArray(next, key, index);
-    next.powerline[key][index] = value;
-    return normalizeSettings(next);
+export function toggleLanguageModule(settings, selectedIndex, step) {
+    return MODULE_ORDER[normalizeCircularIndex(selectedIndex + step, MODULE_ORDER.length)];
 }
 
 export function updateModuleField(settings, moduleKey, fieldKey, rawValue, type) {
@@ -300,13 +222,13 @@ export function removeMapEntry(settings, moduleKey, fieldKey, entryKey) {
     return normalizeSettings(next);
 }
 
-export function toggleLanguageModule(settings, selectedIndex, step) {
-    return MODULE_ORDER[normalizeCircularIndex(selectedIndex + step, MODULE_ORDER.length)];
-}
-
 function createDefaultPromptItem(type) {
     if (type === 'module') {
         return createPromptItem('module', { module: 'hostname' });
+    }
+
+    if (type === 'frame') {
+        return createPromptItem('frame', { glyph: SEPARATOR_PRESETS[0] || '', invert: false });
     }
 
     if (type === 'rawText') {
@@ -314,40 +236,6 @@ function createDefaultPromptItem(type) {
     }
 
     return createPromptItem('styledText', { text: 'segment', style: 'none' });
-}
-
-function cyclePowerlineArrayEntry(settings, key, index, presets, step) {
-    const next = cloneSettings(settings);
-    ensurePowerlineArray(next, key, index);
-
-    const currentValue = next.powerline[key][index] || '';
-    const currentIndex = presets.indexOf(currentValue);
-    const start = currentIndex === -1 ? 0 : currentIndex;
-    const nextIndex = normalizeCircularIndex(start + step, presets.length);
-    next.powerline[key][index] = presets[nextIndex] || presets[0] || '';
-
-    if (key === 'separators') {
-        const safeIndex = clamp(index, 0, next.powerline.separatorInvertBackground.length - 1);
-        const current = next.powerline[key][index];
-        const leftFacing = current === '' || current === '';
-        next.powerline.separatorInvertBackground[safeIndex] = leftFacing;
-    }
-
-    return normalizeSettings(next);
-}
-
-function ensurePowerlineArray(settings, key, index) {
-    const fallback = key === 'separators' ? '' : '';
-
-    while (settings.powerline[key].length <= index) {
-        settings.powerline[key].push(fallback);
-    }
-
-    if (key === 'separators') {
-        while (settings.powerline.separatorInvertBackground.length <= index) {
-            settings.powerline.separatorInvertBackground.push(false);
-        }
-    }
 }
 
 function cloneSettings(settings) {

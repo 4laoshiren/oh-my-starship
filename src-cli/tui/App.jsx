@@ -8,13 +8,11 @@ import { MainMenu } from './components/MainMenu.jsx';
 import { MapEditor } from './components/MapEditor.jsx';
 import { ModuleEditor } from './components/ModuleEditor.jsx';
 import { ModuleList } from './components/ModuleList.jsx';
-import { PowerlineFrameEditor } from './components/SeparatorEditor.jsx';
 import { StatusPreview } from './components/StatusPreview.jsx';
 
 const SCREENS = {
     MAIN: 'main',
     LAYOUT: 'layout',
-    POWERLINE_FRAME: 'powerline-frame',
     MODULES: 'modules',
     MODULE_EDITOR: 'module-editor',
     MAP_EDITOR: 'map-editor',
@@ -90,10 +88,6 @@ function App() {
             setScreen(SCREENS.LAYOUT);
             return;
         }
-        if (action === 'powerline-frame') {
-            setScreen(SCREENS.POWERLINE_FRAME);
-            return;
-        }
         if (action === 'modules') {
             setScreen(SCREENS.MODULES);
             return;
@@ -115,17 +109,6 @@ function App() {
         if (screen === SCREENS.LAYOUT) {
             return (
                 <LayoutEditor
-                    settings={settings}
-                    onChange={updateSettings}
-                    onBack={() => setScreen(SCREENS.MAIN)}
-                    interactive={interactive}
-                />
-            );
-        }
-
-        if (screen === SCREENS.POWERLINE_FRAME) {
-            return (
-                <PowerlineFrameEditor
                     settings={settings}
                     onChange={updateSettings}
                     onBack={() => setScreen(SCREENS.MAIN)}

@@ -86,7 +86,6 @@ function tomlObjectToSettings(tomlObject) {
 
     const parsedPrompt = parsePromptFormat(format, modules);
     settings.prompt.lines = parsedPrompt.lines;
-    settings.powerline = parsedPrompt.powerline;
     settings.modules = modules;
 
     return normalizeSettings(settings);

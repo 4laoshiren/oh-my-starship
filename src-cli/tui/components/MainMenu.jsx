@@ -6,12 +6,7 @@ const MENU_ITEMS = [
     {
         key: 'layout',
         label: 'Prompt Layout',
-        detail: 'Edit content lines only.',
-    },
-    {
-        key: 'powerline-frame',
-        label: 'Powerline Frame',
-        detail: 'Edit hidden separator and caps.',
+        detail: 'Edit content, frame, and colors together.',
     },
     { key: 'modules', label: 'Modules', detail: 'Module fields and nested maps.' },
     { key: 'save', label: 'Save', detail: 'Write starship.toml.' },
@@ -48,8 +43,13 @@ function MainMenu({ dirty, onSelect, interactive }) {
     );
 
     return (
-        <TitledBox flexDirection="column" borderStyle="round" borderColor="green" paddingX={1} titles={['Main Menu']}>
-
+        <TitledBox
+            flexDirection="column"
+            borderStyle="round"
+            borderColor="green"
+            paddingX={1}
+            titles={['Main Menu']}
+        >
             <Text dimColor>
                 {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
             </Text>

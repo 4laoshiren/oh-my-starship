@@ -1,3 +1,5 @@
+import { ansi256ToHex, sgr16ToHex } from './colors.js';
+
 export function parseAnsiLines(input) {
     const lines = [[]];
     const style = {
@@ -78,6 +80,25 @@ function applySgr(style, rawCodes) {
         }
         if (code === 49) {
             style.backgroundColor = undefined;
+            continue;
+        }
+        const basicColor = sgr16ToHex(code);
+        if (basicColor) {
+            if ((code >= 30 && code <= 37) || (code >= 90 && code <= 97)) {
+                style.color = basicColor;
+            } else {
+                style.backgroundColor = basicColor;
+            }
+            continue;
+        }
+        if ((code === 38 || code === 48) && codes[index + 1] === 5) {
+            const color = ansi256ToHex(codes[index + 2]);
+            if (code === 38) {
+                style.color = color;
+            } else {
+                style.backgroundColor = color;
+            }
+            index += 2;
             continue;
         }
         if ((code === 38 || code === 48) && codes[index + 1] === 2) {

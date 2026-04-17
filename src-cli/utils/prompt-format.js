@@ -14,113 +14,44 @@ export function parsePromptFormat(format = DEFAULT_FORMAT, modules = {}) {
     const rawTokens = tokenizePromptFormat(format);
     const lineTokens = splitTokensByNewline(rawTokens);
     const lines = [];
-    const separators = [];
-    const separatorInvertBackground = [];
-    const startCaps = [];
-    const endCaps = [];
-    let sawFrame = false;
 
-    for (let lineIndex = 0; lineIndex < lineTokens.length; lineIndex += 1) {
-        const tokens = lineTokens[lineIndex] || [];
+    for (const tokens of lineTokens) {
         const lineItems = [];
-        let hadExplicitFrameSinceLastItem = false;
 
         for (let index = 0; index < tokens.length; index += 1) {
             const token = tokens[index];
+            const item = convertTokenToPromptItem(token, tokens, index, modules);
 
-            if (isFrameToken(token)) {
-                sawFrame = true;
-                const previousItem = lineItems[lineItems.length - 1];
-                const nextContentToken = findNextContentToken(tokens, index + 1);
-
-                if (!previousItem && nextContentToken) {
-                    startCaps[lineIndex] = token.text;
-                    continue;
-                }
-
-                if (previousItem && nextContentToken) {
-                    separators.push(token.text);
-                    separatorInvertBackground.push(
-                        inferSeparatorInversion(
-                            token.style,
-                            resolvePromptItemBackground(previousItem, modules),
-                            resolveTokenBackground(nextContentToken, modules)
-                        )
-                    );
-                    hadExplicitFrameSinceLastItem = true;
-                    continue;
-                }
-
-                if (previousItem && !nextContentToken) {
-                    endCaps[lineIndex] = token.text;
-                }
-                continue;
+            if (item) {
+                lineItems.push(item);
             }
-
-            const item = convertTokenToPromptItem(token);
-            if (!item) {
-                continue;
-            }
-
-            // 中文注释：原格式里两个内容 token 中间没有 frame，就把它们视为同一个段落链。
-            if (lineItems.length > 0 && !hadExplicitFrameSinceLastItem) {
-                const previous = lineItems[lineItems.length - 1];
-                if (previous) {
-                    previous.merge = true;
-                }
-            }
-
-            lineItems.push(item);
-            hadExplicitFrameSinceLastItem = false;
         }
 
         lines.push(lineItems);
-        startCaps[lineIndex] = startCaps[lineIndex] || '';
-        endCaps[lineIndex] = endCaps[lineIndex] || '';
     }
 
-    const normalizedSeparators = collapseRepeatedValues(separators);
-    const normalizedInvert = collapseRepeatedValues(separatorInvertBackground);
-
-    return {
-        lines,
-        powerline: {
-            enabled: sawFrame,
-            separators:
-                normalizedSeparators.length > 0
-                    ? normalizedSeparators
-                    : [SEPARATOR_PRESETS[0] || ''],
-            separatorInvertBackground: normalizedInvert.length > 0 ? normalizedInvert : [false],
-            startCaps,
-            endCaps,
-        },
-    };
+    return { lines };
 }
 
 export function buildPromptFormat(settings) {
-    const lines = settings.prompt.lines;
-    const lineParts = [];
-    let globalSeparatorIndex = 0;
-
-    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-        const line = lines[lineIndex] || [];
-        lineParts.push(buildPromptLineFormat(line, settings, lineIndex, globalSeparatorIndex));
-        globalSeparatorIndex += countPowerlineSlots(line);
-    }
-
+    const lines = settings.prompt.lines || [];
+    const lineParts = lines.map((line) => buildPromptLineFormat(line || [], settings));
     return lineParts.join('\n') || '$character';
 }
 
 export function formatPromptItemLabel(item, index) {
     const slot = String(index + 1).padStart(2, '0');
-    const suffix = item.merge ? '  (merge→)' : '';
 
     if (item.type === 'module') {
-        return `${slot}  $${item.module}${suffix}`;
+        return `${slot}  $${item.module}`;
+    }
+
+    if (item.type === 'frame') {
+        return `${slot}  Frame "${printableText(item.glyph)}"`;
     }
 
     const styleLabel = item.type === 'styledText' ? item.style || 'none' : 'none';
-    return `${slot}  "${printableText(item.text)}"  (${styleLabel})${suffix}`;
+    return `${slot}  "${printableText(item.text)}"  (${styleLabel})`;
 }
 
 export function formatPromptLineSummary(line) {
@@ -130,23 +61,17 @@ export function formatPromptLineSummary(line) {
 
     return line
         .map((item) => {
-            const base =
-                item.type === 'module' ? `$${item.module}` : printableText(item.text || '');
-            return item.merge ? `${base}·` : base;
+            if (item.type === 'module') {
+                return `$${item.module}`;
+            }
+
+            if (item.type === 'frame') {
+                return printableText(item.glyph || '');
+            }
+
+            return printableText(item.text || '');
         })
         .join(' ');
-}
-
-export function countPowerlineSlots(line) {
-    let total = 0;
-
-    for (let index = 0; index < line.length - 1; index += 1) {
-        if (!line[index]?.merge) {
-            total += 1;
-        }
-    }
-
-    return total;
 }
 
 export function parseStyle(style = '') {
@@ -170,7 +95,7 @@ export function parseStyle(style = '') {
             result.flags.push(part);
             continue;
         }
-        if (!result.fg && (part.startsWith('#') || /^[a-z]+$/i.test(part))) {
+        if (!result.fg && (part.startsWith('#') || /^\d+$/.test(part) || /^[a-z-]+$/i.test(part))) {
             result.fg = part;
             continue;
         }
@@ -232,125 +157,86 @@ export function resolvePromptItemBackground(item, modules = {}) {
     return '';
 }
 
+export function resolveFramePreviewColors(line, itemIndex, modules = {}) {
+    const item = line[itemIndex];
+    const previousItem = findPreviousContentItem(line, itemIndex);
+    const nextItem = findNextContentItem(line, itemIndex);
+    const previousBg = resolvePromptItemBackground(previousItem, modules);
+    const nextBg = resolvePromptItemBackground(nextItem, modules);
+
+    if (previousBg && nextBg) {
+        return {
+            fg: item?.invert ? nextBg : previousBg,
+            bg: item?.invert ? previousBg : nextBg,
+        };
+    }
+
+    return {
+        fg: previousBg || nextBg || '',
+        bg: '',
+    };
+}
+
 export function buildFallbackPreviewText(settings, samples = {}) {
-    let globalSeparatorIndex = 0;
-    const lines = settings.prompt.lines.map((line, lineIndex) => {
-        const previewLine = buildPreviewLine(
-            line,
-            settings,
-            lineIndex,
-            globalSeparatorIndex,
-            samples
-        );
-        globalSeparatorIndex += countPowerlineSlots(line);
-        return previewLine;
-    });
+    const lines = (settings.prompt.lines || []).map((line) =>
+        buildPreviewLine(line || [], settings, samples)
+    );
+
     return lines.join('\n').trimEnd();
 }
 
-function buildPromptLineFormat(line, settings, lineIndex, globalSeparatorIndex) {
-    const parts = [];
-    const powerline = settings.powerline;
-
-    if (!Array.isArray(line) || line.length === 0) {
-        return '';
-    }
-
-    if (powerline.enabled) {
-        const startCap = powerline.startCaps[lineIndex] || '';
-        const firstBg = resolvePromptItemBackground(line[0], settings.modules);
-        if (startCap) {
-            parts.push(formatStyledText(startCap, buildSingleColorStyle(firstBg)));
-        }
-    }
-
-    let separatorSlotIndex = globalSeparatorIndex;
-
-    for (let index = 0; index < line.length; index += 1) {
-        const item = line[index];
-        const nextItem = line[index + 1];
-
-        parts.push(formatPromptItem(item));
-
-        if (powerline.enabled && nextItem && !item.merge) {
-            parts.push(buildImplicitSeparator(item, nextItem, settings, separatorSlotIndex));
-            separatorSlotIndex += 1;
-        }
-    }
-
-    if (powerline.enabled) {
-        const endCap = powerline.endCaps[lineIndex] || '';
-        const lastBg = resolvePromptItemBackground(line[line.length - 1], settings.modules);
-        if (endCap) {
-            parts.push(formatStyledText(endCap, buildSingleColorStyle(lastBg)));
-        }
-    }
-
-    return parts.join('');
+function buildPromptLineFormat(line, settings) {
+    return line.map((item, index) => formatPromptItem(item, line, index, settings)).join('');
 }
 
-function buildImplicitSeparator(currentItem, nextItem, settings, separatorSlotIndex) {
-    const powerline = settings.powerline;
-    const separatorChar =
-        powerline.separators[Math.min(separatorSlotIndex, powerline.separators.length - 1)] ||
-        powerline.separators[0] ||
-        '';
-    const invert =
-        powerline.separatorInvertBackground[
-            Math.min(separatorSlotIndex, powerline.separatorInvertBackground.length - 1)
-        ] || false;
-    const currentBg = resolvePromptItemBackground(currentItem, settings.modules);
-    const nextBg = resolvePromptItemBackground(nextItem, settings.modules);
+function formatPromptItem(item, line, index, settings) {
+    if (item.type === 'module') {
+        return `$${item.module}`;
+    }
 
-    return formatStyledText(separatorChar, buildDualColorStyle(currentBg, nextBg, invert));
+    if (item.type === 'frame') {
+        const colors = resolveFramePreviewColors(line, index, settings.modules);
+        return formatStyledText(item.glyph || '', buildFrameStyle(colors));
+    }
+
+    if (item.type === 'styledText') {
+        return formatStyledText(item.text, item.style);
+    }
+
+    return escapeRawText(item.text);
 }
 
-function buildPreviewLine(line, settings, lineIndex, globalSeparatorIndex, samples) {
+function buildFrameStyle(colors) {
     const parts = [];
-    const powerline = settings.powerline;
-    let separatorSlotIndex = globalSeparatorIndex;
 
-    if (!Array.isArray(line) || line.length === 0) {
-        return '';
+    if (colors.fg) {
+        parts.push(`fg:${colors.fg}`);
+    }
+    if (colors.bg) {
+        parts.push(`bg:${colors.bg}`);
     }
 
-    if (powerline.enabled) {
-        const startCap = powerline.startCaps[lineIndex] || '';
-        if (startCap) {
-            parts.push(startCap);
-        }
-    }
+    return parts.join(' ') || 'none';
+}
 
-    for (let index = 0; index < line.length; index += 1) {
-        const item = line[index];
-        const nextItem = line[index + 1];
+function buildPreviewLine(line, settings, samples) {
+    const parts = [];
 
+    for (const item of line) {
         if (item.type === 'module') {
             const moduleConfig = settings.modules[item.module];
             if (!moduleConfig?.disabled) {
                 parts.push(samples[item.module] || `$${item.module}`);
             }
-        } else {
-            parts.push(item.text || '');
+            continue;
         }
 
-        if (powerline.enabled && nextItem && !item.merge) {
-            parts.push(
-                powerline.separators[
-                    Math.min(separatorSlotIndex, powerline.separators.length - 1)
-                ] ||
-                    powerline.separators[0] ||
-                    ''
-            );
-            separatorSlotIndex += 1;
+        if (item.type === 'frame') {
+            parts.push(item.glyph || '');
+            continue;
         }
-    }
 
-    if (powerline.enabled) {
-        const endCap = powerline.endCaps[lineIndex] || '';
-        if (endCap) {
-            parts.push(endCap);
-        }
+        parts.push(item.text || '');
     }
 
     return parts.join('');
@@ -397,7 +283,7 @@ function tokenizePromptFormat(format) {
         index = raw.nextIndex;
     }
 
-    return mergeAdjacentRawText(tokens);
+    return combineAdjacentRawText(tokens);
 }
 
 function splitTokensByNewline(tokens) {
@@ -417,18 +303,14 @@ function splitTokensByNewline(tokens) {
     return lines;
 }
 
-function findNextContentToken(tokens, startIndex) {
-    for (let index = startIndex; index < tokens.length; index += 1) {
-        const token = tokens[index];
-        if (!isFrameToken(token)) {
-            return token;
-        }
+function convertTokenToPromptItem(token, tokens, index, modules) {
+    if (isFrameToken(token)) {
+        return createPromptItem('frame', {
+            glyph: token.text,
+            invert: inferFrameInversion(token, tokens, index, modules),
+        });
     }
 
-    return null;
-}
-
-function convertTokenToPromptItem(token) {
     if (token.type === 'module') {
         return createPromptItem('module', { module: token.module });
     }
@@ -442,6 +324,60 @@ function convertTokenToPromptItem(token) {
 
     if (token.type === 'rawText') {
         return createPromptItem('rawText', { text: token.text });
+    }
+
+    return null;
+}
+
+function inferFrameInversion(token, tokens, index, modules) {
+    const previousToken = findPreviousContentToken(tokens, index);
+    const nextToken = findNextContentToken(tokens, index);
+    const previousBg = resolveTokenBackground(previousToken, modules);
+    const nextBg = resolveTokenBackground(nextToken, modules);
+    const parsed = parseStyle(token.style || '');
+
+    return Boolean(previousBg && nextBg && parsed.fg === nextBg && parsed.bg === previousBg);
+}
+
+function findPreviousContentToken(tokens, startIndex) {
+    for (let index = startIndex - 1; index >= 0; index -= 1) {
+        const token = tokens[index];
+        if (!isFrameToken(token)) {
+            return token;
+        }
+    }
+
+    return null;
+}
+
+function findNextContentToken(tokens, startIndex) {
+    for (let index = startIndex + 1; index < tokens.length; index += 1) {
+        const token = tokens[index];
+        if (!isFrameToken(token)) {
+            return token;
+        }
+    }
+
+    return null;
+}
+
+function findPreviousContentItem(line, startIndex) {
+    for (let index = startIndex - 1; index >= 0; index -= 1) {
+        const item = line[index];
+        if (item?.type !== 'frame') {
+            return item;
+        }
+    }
+
+    return null;
+}
+
+function findNextContentItem(line, startIndex) {
+    for (let index = startIndex + 1; index < line.length; index += 1) {
+        const item = line[index];
+        if (item?.type !== 'frame') {
+            return item;
+        }
     }
 
     return null;
@@ -462,42 +398,6 @@ function resolveTokenBackground(token, modules) {
     }
 
     return '';
-}
-
-function inferSeparatorInversion(style, previousBg, nextBg) {
-    const parsed = parseStyle(style || '');
-    return Boolean(previousBg && nextBg && parsed.fg === nextBg && parsed.bg === previousBg);
-}
-
-function formatPromptItem(item) {
-    if (item.type === 'module') {
-        return `$${item.module}`;
-    }
-
-    if (item.type === 'styledText') {
-        return formatStyledText(item.text, item.style);
-    }
-
-    return escapeRawText(item.text);
-}
-
-function buildSingleColorStyle(color) {
-    return color ? `fg:${color}` : 'none';
-}
-
-function buildDualColorStyle(previousBg, nextBg, invert) {
-    const parts = [];
-    const fg = invert ? nextBg : previousBg;
-    const bg = invert ? previousBg : nextBg;
-
-    if (fg) {
-        parts.push(`fg:${fg}`);
-    }
-    if (bg) {
-        parts.push(`bg:${bg}`);
-    }
-
-    return parts.join(' ') || 'none';
 }
 
 function isFrameToken(token) {
@@ -588,32 +488,19 @@ function unescapeFormatText(text = '') {
     return String(text).replace(/\\(.)/g, '$1');
 }
 
-function mergeAdjacentRawText(tokens) {
-    const merged = [];
+function combineAdjacentRawText(tokens) {
+    const combined = [];
 
     for (const token of tokens) {
-        const previous = merged[merged.length - 1];
+        const previous = combined[combined.length - 1];
         if (token.type === 'rawText' && previous?.type === 'rawText') {
             previous.text += token.text;
             continue;
         }
-        merged.push(token);
+        combined.push(token);
     }
 
-    return merged;
-}
-
-function collapseRepeatedValues(values) {
-    if (values.length <= 1) {
-        return values;
-    }
-
-    const first = values[0];
-    if (values.every((value) => value === first)) {
-        return [first];
-    }
-
-    return values;
+    return combined;
 }
 
 function printableText(text) {
