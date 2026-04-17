@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
 
@@ -12,10 +12,10 @@ import {
     addPromptItem,
     addPromptLine,
     cyclePromptFrameGlyph,
-    movePromptItem,
     removePromptItem,
     removePromptLine,
     replacePromptItem,
+    replacePromptLine,
     togglePromptFrameInvert,
     updatePromptItem,
 } from '../../utils/settings-mutations.js';
@@ -71,25 +71,43 @@ const CHANGE_TYPE_OPTIONS = [
     },
 ];
 
-function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight }) {
+function LayoutEditor({
+    settings,
+    onChange,
+    onPreviewChange,
+    onBack,
+    interactive,
+    terminalHeight,
+}) {
     const [mode, setMode] = useState(MODE_LINES);
     const [selectedLineIndex, setSelectedLineIndex] = useState(0);
     const [selectedRowIndex, setSelectedRowIndex] = useState(0);
+    // move mode 期间只在当前组件里重排，退出时再一次性写回 settings，避免按住方向键时整页重算
+    const [moveDraft, setMoveDraft] = useState(null);
     const [picker, setPicker] = useState(null);
     const [editorState, setEditorState] = useState(null);
     const [colorMode, setColorMode] = useState(null);
+    const moveDraftRef = useRef(null);
 
     const lines = settings.prompt.lines;
     const safeSelectedLineIndex = clamp(selectedLineIndex, 0, Math.max(0, lines.length - 1));
+    const moveMode = Boolean(moveDraft);
+    const activeLineItems = moveDraft?.lineItems || lines[safeSelectedLineIndex] || [];
     const modulePickerCatalog = useMemo(() => buildModulePickerCatalog(settings), [settings]);
     const colorTargetsById = useMemo(() => buildColorTargetMap(settings), [settings]);
     const rows = useMemo(
-        () => buildLayoutRows(settings, safeSelectedLineIndex, colorTargetsById),
-        [colorTargetsById, safeSelectedLineIndex, settings]
+        () => buildLayoutRows(settings, safeSelectedLineIndex, activeLineItems),
+        [activeLineItems, safeSelectedLineIndex, settings]
     );
-    const safeSelectedRowIndex = clamp(selectedRowIndex, 0, Math.max(0, rows.length - 1));
-    const selectedRow = rows[safeSelectedRowIndex] || null;
-    const selectedColorTarget = resolveSelectedColorTarget(selectedRow, colorTargetsById);
+    const activeSelectedRowIndex = clamp(
+        moveDraft?.selectedIndex ?? selectedRowIndex,
+        0,
+        Math.max(0, rows.length - 1)
+    );
+    const selectedRow = rows[activeSelectedRowIndex] || null;
+    const selectedColorTarget = moveMode
+        ? null
+        : resolveSelectedColorTarget(selectedRow, colorTargetsById);
     const listViewportRows = resolveViewportRowCount(terminalHeight);
     const pickerTypeOptions = picker?.action === 'change' ? CHANGE_TYPE_OPTIONS : ADD_TYPE_OPTIONS;
     const selectedTypeEntry = picker
@@ -120,6 +138,11 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
 
             if (colorMode) {
                 handleColorModeInput(input, key);
+                return;
+            }
+
+            if (moveMode) {
+                handleMoveModeInput(key);
                 return;
             }
 
@@ -166,6 +189,10 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
             return '↑↓ select module  Enter apply  ESC back';
         }
 
+        if (moveMode) {
+            return '↑↓ move row  Enter/ESC done';
+        }
+
         if (colorMode) {
             return '←→ named color  F switch fg/bg  H hex  A ansi256  R clear  ESC done';
         }
@@ -174,8 +201,34 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
             return '↑↓ select line  Enter edit line  A add line  D delete line  ESC back';
         }
 
-        return buildRowHelpText(selectedRow);
-    }, [colorMode, editorState, mode, picker, selectedRow]);
+        return buildRowHelpText(selectedRow, moveMode);
+    }, [colorMode, editorState, mode, moveMode, picker, selectedRow]);
+
+    useEffect(() => {
+        if (!onPreviewChange) {
+            return;
+        }
+
+        if (!moveMode) {
+            onPreviewChange(null);
+            return;
+        }
+
+        onPreviewChange({
+            settings: buildPreviewSettings(settings, safeSelectedLineIndex, activeLineItems),
+            fastMode: true,
+        });
+    }, [activeLineItems, moveMode, onPreviewChange, safeSelectedLineIndex, settings]);
+
+    useEffect(() => {
+        if (!onPreviewChange) {
+            return undefined;
+        }
+
+        return () => {
+            onPreviewChange(null);
+        };
+    }, [onPreviewChange]);
 
     return (
         <TitledBox
@@ -187,11 +240,16 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
         >
             <Text dimColor>Content, frames, and inline colors now live in one layout editor.</Text>
             <Text dimColor>{helpText}</Text>
-            <Text dimColor>
-                {mode === MODE_ROWS
-                    ? `Editing Line ${safeSelectedLineIndex + 1}`
-                    : `${lines.length} line${lines.length === 1 ? '' : 's'} in prompt`}
-            </Text>
+            {mode === MODE_ROWS ? (
+                <Box>
+                    <Text dimColor>{`Editing Line ${safeSelectedLineIndex + 1}`}</Text>
+                    {moveMode ? <Text color="blue"> [MOVE MODE]</Text> : null}
+                </Box>
+            ) : (
+                <Text dimColor>
+                    {`${lines.length} line${lines.length === 1 ? '' : 's'} in prompt`}
+                </Text>
+            )}
             {colorMode ? (
                 <ColorModeSummary
                     row={selectedRow}
@@ -219,8 +277,9 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
             ) : (
                 <RowsView
                     rows={rows}
-                    selectedRowIndex={safeSelectedRowIndex}
+                    selectedRowIndex={activeSelectedRowIndex}
                     selectedRow={selectedRow}
+                    moveMode={moveMode}
                     viewportRows={listViewportRows}
                 />
             )}
@@ -664,6 +723,7 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
 
         if (key.return || input === 'e' || input === 'E') {
             setMode(MODE_ROWS);
+            clearMoveDraft();
             setSelectedRowIndex(0);
             setPicker(null);
             setEditorState(null);
@@ -671,9 +731,31 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
         }
     }
 
+    function handleMoveModeInput(key) {
+        const currentMoveDraft = moveDraftRef.current;
+        if (!currentMoveDraft) {
+            clearMoveDraft();
+            return;
+        }
+
+        if (key.escape || key.return) {
+            finishMoveMode(currentMoveDraft);
+            return;
+        }
+
+        if (!key.upArrow && !key.downArrow) {
+            return;
+        }
+
+        const nextMoveDraft = applyMoveDraftStep(currentMoveDraft, key.downArrow ? 1 : -1);
+        moveDraftRef.current = nextMoveDraft;
+        setMoveDraft(nextMoveDraft);
+    }
+
     function handleRowModeInput(input, key) {
         if (key.escape) {
             setMode(MODE_LINES);
+            clearMoveDraft();
             setPicker(null);
             setEditorState(null);
             setColorMode(null);
@@ -696,6 +778,11 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
         }
 
         if (!selectedRow) {
+            return;
+        }
+
+        if (key.return) {
+            startMoveMode();
             return;
         }
 
@@ -724,30 +811,8 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
             const result = removePromptItem(settings, safeSelectedLineIndex, selectedRow.itemIndex);
             commitSettings(result.settings, {
                 itemIndex: result.itemIndex,
-                fallbackRowIndex: safeSelectedRowIndex,
+                fallbackRowIndex: activeSelectedRowIndex,
             });
-            return;
-        }
-
-        if (input === 'u' || input === 'U') {
-            const result = movePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                -1
-            );
-            commitSettings(result.settings, { itemIndex: result.itemIndex });
-            return;
-        }
-
-        if (input === 'j' || input === 'J') {
-            const result = movePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                1
-            );
-            commitSettings(result.settings, { itemIndex: result.itemIndex });
             return;
         }
 
@@ -798,7 +863,7 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
             return;
         }
 
-        if (input === 'e' || input === 'E' || key.return) {
+        if (input === 'e' || input === 'E') {
             if (selectedRow.kind === 'item') {
                 if (selectedRow.item.type === 'styledText' || selectedRow.item.type === 'rawText') {
                     setEditorState({
@@ -814,6 +879,43 @@ function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight 
                 buffer: selectedRow.item.glyph || '',
             });
         }
+    }
+
+    function startMoveMode() {
+        const nextMoveDraft = {
+            lineItems: clonePromptLine(activeLineItems),
+            selectedIndex: activeSelectedRowIndex,
+            changed: false,
+        };
+
+        moveDraftRef.current = nextMoveDraft;
+        setMoveDraft(nextMoveDraft);
+    }
+
+    function finishMoveMode(currentMoveDraft) {
+        const nextSelectedIndex = clamp(
+            currentMoveDraft.selectedIndex,
+            0,
+            Math.max(0, currentMoveDraft.lineItems.length - 1)
+        );
+
+        // 只有真正发生顺序变化时才提交，减少不必要的 normalize / render
+        if (currentMoveDraft.changed) {
+            const nextSettings = replacePromptLine(
+                settings,
+                safeSelectedLineIndex,
+                currentMoveDraft.lineItems
+            );
+            onChange(nextSettings);
+        }
+
+        setSelectedRowIndex(nextSelectedIndex);
+        clearMoveDraft();
+    }
+
+    function clearMoveDraft() {
+        moveDraftRef.current = null;
+        setMoveDraft(null);
     }
 
     function openAddPicker() {
@@ -915,7 +1017,7 @@ function LinesView({ lines, selectedLineIndex, viewportRows }) {
     );
 }
 
-function RowsView({ rows, selectedRowIndex, selectedRow, viewportRows }) {
+function RowsView({ rows, selectedRowIndex, selectedRow, moveMode, viewportRows }) {
     const viewport = buildViewport(rows, selectedRowIndex, Math.max(1, viewportRows - 2));
 
     return (
@@ -935,6 +1037,7 @@ function RowsView({ rows, selectedRowIndex, selectedRow, viewportRows }) {
                     {viewport.items.map((row, offset) => (
                         <LayoutRow
                             key={row.id}
+                            moveMode={moveMode}
                             row={row}
                             selected={viewport.startIndex + offset === selectedRowIndex}
                         />
@@ -957,12 +1060,15 @@ function RowsView({ rows, selectedRowIndex, selectedRow, viewportRows }) {
     );
 }
 
-function LayoutRow({ row, selected }) {
+function LayoutRow({ row, selected, moveMode }) {
+    const accentColor = selected ? (moveMode ? 'blue' : 'green') : undefined;
+    const marker = selected ? (moveMode ? '◆ ' : '▶ ') : '  ';
+
     return (
         <Box>
             <Box width={27} flexShrink={0}>
-                <Text color={selected ? 'green' : undefined} wrap="truncate-end">
-                    {selected ? '▶ ' : '  '}
+                <Text color={accentColor} wrap="truncate-end">
+                    {marker}
                     {row.label.padEnd(24)}
                 </Text>
             </Box>
@@ -1218,8 +1324,8 @@ function InlinePreview({ segments }) {
     );
 }
 
-function buildLayoutRows(settings, lineIndex, colorTargetsById) {
-    const line = settings.prompt.lines[lineIndex] || [];
+function buildLayoutRows(settings, lineIndex, lineItems) {
+    const line = Array.isArray(lineItems) ? lineItems : settings.prompt.lines[lineIndex] || [];
 
     return line.map((item, itemIndex) => {
         if (item.type === 'frame') {
@@ -1231,27 +1337,19 @@ function buildLayoutRows(settings, lineIndex, colorTargetsById) {
             lineIndex,
             itemIndex,
             item,
-            colorTargetsById,
         });
     });
 }
 
-function createItemRow({ settings, lineIndex, itemIndex, item, colorTargetsById }) {
-    const colorTargetId =
-        item.type === 'module'
-            ? `module:${item.module}`
-            : item.type === 'styledText'
-              ? `prompt:${lineIndex}:${itemIndex}`
-              : null;
-    const colorTarget = colorTargetId ? colorTargetsById.get(colorTargetId) || null : null;
+function createItemRow({ settings, lineIndex, itemIndex, item }) {
     const moduleDisabled =
         item.type === 'module' && Boolean(settings.modules[item.module]?.disabled);
     const resolvedModuleColors =
         item.type === 'module' ? resolveModuleColors(settings.modules[item.module] || {}) : null;
     const parsedItemStyle = item.type === 'styledText' ? parseStyle(item.style || 'none') : null;
 
-    const previewFg = colorTarget?.fg || resolvedModuleColors?.fg || parsedItemStyle?.fg || '';
-    const previewBg = colorTarget?.bg || resolvedModuleColors?.bg || parsedItemStyle?.bg || '';
+    const previewFg = resolvedModuleColors?.fg || parsedItemStyle?.fg || '';
+    const previewBg = resolvedModuleColors?.bg || parsedItemStyle?.bg || '';
 
     return {
         id: `item:${item.id}`,
@@ -1312,7 +1410,7 @@ function resolveSelectedColorTarget(row, colorTargetsById) {
 }
 
 function findLayoutRowIndexById(settings, lineIndex, rowId, fallbackRowIndex = 0) {
-    const rows = buildLayoutRows(settings, lineIndex, buildColorTargetMap(settings));
+    const rows = buildLayoutRows(settings, lineIndex);
     const foundIndex = rows.findIndex((row) => row.id === rowId);
 
     if (foundIndex !== -1) {
@@ -1323,7 +1421,7 @@ function findLayoutRowIndexById(settings, lineIndex, rowId, fallbackRowIndex = 0
 }
 
 function findLayoutRowIndexByItemIndex(settings, lineIndex, itemIndex) {
-    const rows = buildLayoutRows(settings, lineIndex, buildColorTargetMap(settings));
+    const rows = buildLayoutRows(settings, lineIndex);
     const foundIndex = rows.findIndex((row) => row.itemIndex === itemIndex);
 
     if (foundIndex !== -1) {
@@ -1405,7 +1503,11 @@ function buildColorSummary(fg, bg) {
     return `FG ${displayColorName(fg)} · BG ${displayColorName(bg)}`;
 }
 
-function buildRowHelpText(row) {
+function buildRowHelpText(row, moveMode) {
+    if (moveMode) {
+        return '↑↓ move row  Enter/ESC done';
+    }
+
     if (!row) {
         return 'A add slot  ESC lines';
     }
@@ -1417,11 +1519,53 @@ function buildRowHelpText(row) {
             help += '  E edit text  S style';
         }
 
-        help += '  U/J move  D delete  ESC lines';
+        help += '  Enter move  D delete  ESC lines';
         return help;
     }
 
-    return '↑↓ select row  A add  ←→ cycle glyph  E custom glyph  T invert  U/J move  D delete  ESC lines';
+    return '↑↓ select row  A add  ←→ cycle glyph  E custom glyph  T invert  Enter move  D delete  ESC lines';
+}
+
+function buildPreviewSettings(settings, lineIndex, lineItems) {
+    return {
+        ...settings,
+        prompt: {
+            ...settings.prompt,
+            lines: settings.prompt.lines.map((line, index) =>
+                index === lineIndex ? clonePromptLine(lineItems) : line
+            ),
+        },
+    };
+}
+
+function clonePromptLine(lineItems) {
+    return JSON.parse(JSON.stringify(Array.isArray(lineItems) ? lineItems : []));
+}
+
+function applyMoveDraftStep(moveDraft, step) {
+    if (!moveDraft) {
+        return moveDraft;
+    }
+
+    const lineItems = Array.isArray(moveDraft.lineItems) ? [...moveDraft.lineItems] : [];
+    const safeSelectedIndex = clamp(moveDraft.selectedIndex, 0, Math.max(0, lineItems.length - 1));
+    const nextSelectedIndex = clamp(safeSelectedIndex + step, 0, Math.max(0, lineItems.length - 1));
+
+    if (safeSelectedIndex === nextSelectedIndex) {
+        return {
+            ...moveDraft,
+            selectedIndex: safeSelectedIndex,
+        };
+    }
+
+    const [selectedItem] = lineItems.splice(safeSelectedIndex, 1);
+    lineItems.splice(nextSelectedIndex, 0, selectedItem);
+
+    return {
+        lineItems,
+        selectedIndex: nextSelectedIndex,
+        changed: true,
+    };
 }
 
 function buildModulePickerCatalog(settings) {

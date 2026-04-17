@@ -3,8 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { colorToInk } from './colors.js';
+import { resolveModuleColors } from './color-targets.js';
+import {
+    buildFallbackPreviewText,
+    parseStyle,
+    resolveFramePreviewColors,
+} from './prompt-format.js';
 import { settingsToToml } from './settings-service.js';
-import { buildFallbackPreviewText } from './prompt-format.js';
 
 const MODULE_SAMPLES = {
     hostname: ' LAPTOP-D84SE2MG ',
@@ -79,6 +85,70 @@ export function renderFallbackPreview(settings) {
     return buildFallbackPreviewText(settings, MODULE_SAMPLES);
 }
 
+export function buildFastPreviewLines(settings) {
+    // 本地草稿预览只做轻量渲染，不走 starship 子进程，保证 move mode 下的连续按键足够跟手
+    return (settings.prompt.lines || []).map((line) => buildFastPreviewLine(line || [], settings));
+}
+
 export function stripAnsi(value) {
     return String(value).replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
+}
+
+function buildFastPreviewLine(line, settings) {
+    const segments = [];
+
+    for (let index = 0; index < line.length; index += 1) {
+        const item = line[index];
+        if (!item) {
+            continue;
+        }
+
+        if (item.type === 'module') {
+            const moduleConfig = settings.modules[item.module] || {};
+            if (moduleConfig.disabled) {
+                continue;
+            }
+
+            const colors = resolveModuleColors(moduleConfig);
+            segments.push({
+                text: MODULE_SAMPLES[item.module] || `$${item.module}`,
+                color: colorToInk(colors.fg),
+                backgroundColor: colorToInk(colors.bg),
+                bold: false,
+            });
+            continue;
+        }
+
+        if (item.type === 'frame') {
+            const colors = resolveFramePreviewColors(line, index, settings.modules);
+            segments.push({
+                text: item.glyph || '',
+                color: colorToInk(colors.fg),
+                backgroundColor: colorToInk(colors.bg),
+                bold: false,
+            });
+            continue;
+        }
+
+        const parsedStyle =
+            item.type === 'styledText' ? parseStyle(item.style || 'none') : createEmptyStyle();
+
+        segments.push({
+            text: item.text || '',
+            color: colorToInk(parsedStyle.fg),
+            backgroundColor: colorToInk(parsedStyle.bg),
+            bold: parsedStyle.flags.includes('bold'),
+        });
+    }
+
+    return segments;
+}
+
+function createEmptyStyle() {
+    return {
+        fg: '',
+        bg: '',
+        flags: [],
+        unknown: [],
+    };
 }

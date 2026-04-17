@@ -93,6 +93,15 @@ export function movePromptItem(settings, lineIndex, itemIndex, step) {
     };
 }
 
+export function replacePromptLine(settings, lineIndex, lineItems) {
+    const next = cloneSettings(settings);
+    next.prompt.lines[lineIndex] = Array.isArray(lineItems)
+        ? JSON.parse(JSON.stringify(lineItems))
+        : [];
+
+    return normalizeSettings(next);
+}
+
 export function cyclePromptModule(settings, lineIndex, itemIndex, step) {
     const next = cloneSettings(settings);
     const item = next.prompt.lines[lineIndex]?.[itemIndex];

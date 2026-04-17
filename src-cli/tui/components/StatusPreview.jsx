@@ -3,14 +3,20 @@ import { Box, Text } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { parseAnsiLines } from '../../utils/ansi.js';
-import { renderStarshipPreview } from '../../utils/starship-preview.js';
+import { buildFastPreviewLines, renderStarshipPreview } from '../../utils/starship-preview.js';
 
-function StatusPreview({ settings, terminalWidth }) {
+function StatusPreview({ settings, terminalWidth, fastMode = false }) {
     const preview = useMemo(
-        () => renderStarshipPreview(settings, { width: terminalWidth }),
-        [settings, terminalWidth]
+        () =>
+            fastMode
+                ? {
+                      lines: buildFastPreviewLines(settings),
+                      source: 'draft',
+                  }
+                : renderStarshipPreview(settings, { width: terminalWidth }),
+        [fastMode, settings, terminalWidth]
     );
-    const previewLines = parseAnsiLines(preview.text);
+    const previewLines = preview.lines || parseAnsiLines(preview.text);
 
     return (
         <TitledBox
@@ -20,6 +26,7 @@ function StatusPreview({ settings, terminalWidth }) {
             paddingX={1}
             titles={['Preview']}
         >
+            {fastMode ? <Text dimColor>Live draft preview while moving rows.</Text> : null}
             <Box flexDirection="column">
                 {previewLines.map((line, index) => (
                     <Text key={index}>

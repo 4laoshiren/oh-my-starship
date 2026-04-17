@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 
 import { getStarshipTomlPath } from '../utils/paths.js';
@@ -21,6 +21,7 @@ const SCREENS = {
 function App() {
     const { exit } = useApp();
     const [settings, setSettings] = useState(() => loadInitialSettings());
+    const [previewState, setPreviewState] = useState(null);
     const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(settings));
     const [screen, setScreen] = useState(SCREENS.MAIN);
     const [selectedModule, setSelectedModule] = useState('hostname');
@@ -60,10 +61,15 @@ function App() {
         { isActive: interactive }
     );
 
-    function updateSettings(nextSettings) {
+    const updateSettings = useCallback((nextSettings) => {
         setSettings(nextSettings);
+        setPreviewState(null);
         setFlash({ color: 'yellow', text: 'Preview updated. Save with Ctrl+S.' });
-    }
+    }, []);
+
+    const updatePreviewState = useCallback((nextPreviewState) => {
+        setPreviewState(nextPreviewState);
+    }, []);
 
     function reloadSettings() {
         const next = loadInitialSettings();
@@ -113,6 +119,7 @@ function App() {
                 <LayoutEditor
                     settings={settings}
                     onChange={updateSettings}
+                    onPreviewChange={updatePreviewState}
                     onBack={() => setScreen(SCREENS.MAIN)}
                     interactive={interactive}
                     terminalHeight={terminalHeight}
@@ -175,7 +182,12 @@ function App() {
 
     return (
         <Box flexDirection="column">
-            <StatusPreview settings={settings} dirty={dirty} terminalWidth={terminalWidth} />
+            <StatusPreview
+                settings={previewState?.settings || settings}
+                fastMode={Boolean(previewState?.fastMode)}
+                dirty={dirty}
+                terminalWidth={terminalWidth}
+            />
             <Box marginTop={1}>
                 <Text color={flash.color}>{flash.text}</Text>
                 <Text dimColor>{`  Config: ${getStarshipTomlPath()}`}</Text>
