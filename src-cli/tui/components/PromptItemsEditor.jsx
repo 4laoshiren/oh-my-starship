@@ -19,10 +19,7 @@ import {
     togglePromptFrameInvert,
     updatePromptItem,
 } from '../../utils/settings-mutations.js';
-import {
-    parseStyle,
-    resolvePromptItemBackground,
-} from '../../utils/prompt-format.js';
+import { parseStyle, resolvePromptItemBackground } from '../../utils/prompt-format.js';
 import {
     buildColorTargets,
     clearColorTargetChannel,
@@ -39,6 +36,9 @@ import {
 
 const MODE_LINES = 'lines';
 const MODE_ROWS = 'rows';
+const MIN_VIEWPORT_ROWS = 4;
+const MAX_VIEWPORT_ROWS = 12;
+const VIEWPORT_RESERVED_ROWS = 22;
 
 const ADD_TYPE_OPTIONS = [
     {
@@ -71,7 +71,7 @@ const CHANGE_TYPE_OPTIONS = [
     },
 ];
 
-function LayoutEditor({ settings, onChange, onBack, interactive }) {
+function LayoutEditor({ settings, onChange, onBack, interactive, terminalHeight }) {
     const [mode, setMode] = useState(MODE_LINES);
     const [selectedLineIndex, setSelectedLineIndex] = useState(0);
     const [selectedRowIndex, setSelectedRowIndex] = useState(0);
@@ -90,6 +90,7 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
     const safeSelectedRowIndex = clamp(selectedRowIndex, 0, Math.max(0, rows.length - 1));
     const selectedRow = rows[safeSelectedRowIndex] || null;
     const selectedColorTarget = resolveSelectedColorTarget(selectedRow, colorTargetsById);
+    const listViewportRows = resolveViewportRowCount(terminalHeight);
     const pickerTypeOptions = picker?.action === 'change' ? CHANGE_TYPE_OPTIONS : ADD_TYPE_OPTIONS;
     const selectedTypeEntry = picker
         ? pickerTypeOptions.find((entry) => entry.key === picker.selectedType) ||
@@ -200,7 +201,11 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
             ) : null}
             {editorState ? <EditorStateSummary editorState={editorState} /> : null}
             {mode === MODE_LINES ? (
-                <LinesView lines={lines} selectedLineIndex={safeSelectedLineIndex} />
+                <LinesView
+                    lines={lines}
+                    selectedLineIndex={safeSelectedLineIndex}
+                    viewportRows={listViewportRows}
+                />
             ) : picker ? (
                 <PickerView
                     picker={picker}
@@ -209,12 +214,14 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
                     categories={modulePickerCatalog.categories}
                     categoryEntries={pickerCategoryEntries}
                     selectedPickerEntry={selectedPickerEntry}
+                    viewportRows={listViewportRows}
                 />
             ) : (
                 <RowsView
                     rows={rows}
                     selectedRowIndex={safeSelectedRowIndex}
                     selectedRow={selectedRow}
+                    viewportRows={listViewportRows}
                 />
             )}
         </TitledBox>
@@ -878,10 +885,18 @@ function LayoutEditor({ settings, onChange, onBack, interactive }) {
     }
 }
 
-function LinesView({ lines, selectedLineIndex }) {
+function LinesView({ lines, selectedLineIndex, viewportRows }) {
+    const viewport = buildViewport(lines, selectedLineIndex, Math.max(1, viewportRows - 2));
+
     return (
         <Box marginTop={1} flexDirection="column">
-            {lines.map((line, index) => {
+            {viewport.hiddenBefore > 0 ? (
+                <Text
+                    dimColor
+                >{`↑ ${viewport.hiddenBefore} more line${viewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+            ) : null}
+            {viewport.items.map((line, offset) => {
+                const index = viewport.startIndex + offset;
                 const selected = index === selectedLineIndex;
 
                 return (
@@ -891,11 +906,18 @@ function LinesView({ lines, selectedLineIndex }) {
                     </Text>
                 );
             })}
+            {viewport.hiddenAfter > 0 ? (
+                <Text
+                    dimColor
+                >{`↓ ${viewport.hiddenAfter} more line${viewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+            ) : null}
         </Box>
     );
 }
 
-function RowsView({ rows, selectedRowIndex, selectedRow }) {
+function RowsView({ rows, selectedRowIndex, selectedRow, viewportRows }) {
+    const viewport = buildViewport(rows, selectedRowIndex, Math.max(1, viewportRows - 2));
+
     return (
         <Box marginTop={1} flexDirection="column">
             {rows.length === 0 ? (
@@ -904,13 +926,31 @@ function RowsView({ rows, selectedRowIndex, selectedRow }) {
                     <Text dimColor>Press A to add a module, text, or frame.</Text>
                 </>
             ) : (
-                rows.map((row, index) => (
-                    <LayoutRow key={row.id} row={row} selected={index === selectedRowIndex} />
-                ))
+                <>
+                    {viewport.hiddenBefore > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↑ ${viewport.hiddenBefore} more item${viewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                    ) : null}
+                    {viewport.items.map((row, offset) => (
+                        <LayoutRow
+                            key={row.id}
+                            row={row}
+                            selected={viewport.startIndex + offset === selectedRowIndex}
+                        />
+                    ))}
+                    {viewport.hiddenAfter > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↓ ${viewport.hiddenAfter} more item${viewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                    ) : null}
+                </>
             )}
             {selectedRow ? (
                 <Box marginTop={1}>
-                    <Text dimColor>{selectedRow.description}</Text>
+                    <Text dimColor wrap="truncate-end">
+                        {selectedRow.description}
+                    </Text>
                 </Box>
             ) : null}
         </Box>
@@ -920,21 +960,31 @@ function RowsView({ rows, selectedRowIndex, selectedRow }) {
 function LayoutRow({ row, selected }) {
     return (
         <Box>
-            <Text color={selected ? 'green' : undefined}>
-                {selected ? '▶ ' : '  '}
-                {row.label.padEnd(24)}
-            </Text>
-            <InlinePreview
-                segments={[
-                    {
-                        text: row.previewText,
-                        fg: row.previewFg,
-                        bg: row.previewBg,
-                        dim: row.previewDim,
-                    },
-                ]}
-            />
-            {row.metaText ? <Text dimColor>{`  ${row.metaText}`}</Text> : null}
+            <Box width={27} flexShrink={0}>
+                <Text color={selected ? 'green' : undefined} wrap="truncate-end">
+                    {selected ? '▶ ' : '  '}
+                    {row.label.padEnd(24)}
+                </Text>
+            </Box>
+            <Box flexShrink={1} marginRight={row.metaText ? 1 : 0}>
+                <InlinePreview
+                    segments={[
+                        {
+                            text: row.previewText,
+                            fg: row.previewFg,
+                            bg: row.previewBg,
+                            dim: row.previewDim,
+                        },
+                    ]}
+                />
+            </Box>
+            {row.metaText ? (
+                <Box flexGrow={1} flexShrink={1}>
+                    <Text dimColor wrap="truncate-end">
+                        {row.metaText}
+                    </Text>
+                </Box>
+            ) : null}
         </Box>
     );
 }
@@ -946,7 +996,22 @@ function PickerView({
     categories,
     categoryEntries,
     selectedPickerEntry,
+    viewportRows,
 }) {
+    const visibleItemCount = Math.max(1, viewportRows - 2);
+    const selectedTypeIndex = Math.max(
+        0,
+        typeOptions.findIndex((entry) => entry.key === selectedTypeEntry?.key)
+    );
+    const selectedCategoryIndex = Math.max(0, categories.indexOf(picker.selectedCategory));
+    const selectedModuleIndex = Math.max(
+        0,
+        categoryEntries.findIndex((entry) => entry.key === selectedPickerEntry?.key)
+    );
+    const typeViewport = buildViewport(typeOptions, selectedTypeIndex, visibleItemCount);
+    const categoryViewport = buildViewport(categories, selectedCategoryIndex, visibleItemCount);
+    const moduleViewport = buildViewport(categoryEntries, selectedModuleIndex, visibleItemCount);
+
     return (
         <Box marginTop={1} flexDirection="column">
             <Text dimColor>
@@ -954,58 +1019,107 @@ function PickerView({
             </Text>
             {picker.level === 'type' ? (
                 <>
-                    {typeOptions.map((entry, index) => {
+                    {typeViewport.hiddenBefore > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↑ ${typeViewport.hiddenBefore} more option${typeViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                    ) : null}
+                    {typeViewport.items.map((entry, offset) => {
+                        const index = typeViewport.startIndex + offset;
                         const selected = entry.key === selectedTypeEntry?.key;
                         return (
-                            <Text key={entry.key} color={selected ? 'green' : undefined}>
+                            <Text
+                                key={entry.key}
+                                color={selected ? 'green' : undefined}
+                                wrap="truncate-end"
+                            >
                                 {selected ? '▶ ' : '  '}
                                 {`${index + 1}. ${entry.label}`}
                             </Text>
                         );
                     })}
+                    {typeViewport.hiddenAfter > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↓ ${typeViewport.hiddenAfter} more option${typeViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                    ) : null}
                     {selectedTypeEntry ? (
                         <Box marginTop={1} paddingLeft={2}>
-                            <Text dimColor>{selectedTypeEntry.description}</Text>
+                            <Text dimColor wrap="truncate-end">
+                                {selectedTypeEntry.description}
+                            </Text>
                         </Box>
                     ) : null}
                 </>
             ) : picker.level === 'module-category' ? (
                 <>
-                    {categories.map((category, index) => {
+                    {categoryViewport.hiddenBefore > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↑ ${categoryViewport.hiddenBefore} more group${categoryViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                    ) : null}
+                    {categoryViewport.items.map((category, offset) => {
+                        const index = categoryViewport.startIndex + offset;
                         const selected = category === picker.selectedCategory;
                         return (
-                            <Text key={category} color={selected ? 'green' : undefined}>
+                            <Text
+                                key={category}
+                                color={selected ? 'green' : undefined}
+                                wrap="truncate-end"
+                            >
                                 {selected ? '▶ ' : '  '}
                                 {`${index + 1}. ${category}`}
                             </Text>
                         );
                     })}
+                    {categoryViewport.hiddenAfter > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↓ ${categoryViewport.hiddenAfter} more group${categoryViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                    ) : null}
                     <Box marginTop={1} paddingLeft={2}>
-                        <Text dimColor>{getModuleCategoryHint(picker.selectedCategory)}</Text>
+                        <Text dimColor wrap="truncate-end">
+                            {getModuleCategoryHint(picker.selectedCategory)}
+                        </Text>
                     </Box>
                 </>
             ) : categoryEntries.length === 0 ? (
                 <Text dimColor>No modules available in this group.</Text>
             ) : (
                 <>
-                    {categoryEntries.map((entry, index) => {
+                    {moduleViewport.hiddenBefore > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↑ ${moduleViewport.hiddenBefore} more module${moduleViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                    ) : null}
+                    {moduleViewport.items.map((entry, offset) => {
+                        const index = moduleViewport.startIndex + offset;
                         const selected = entry.key === selectedPickerEntry?.key;
                         return (
-                            <Box key={entry.key}>
-                                <Text color={selected ? 'green' : undefined}>
-                                    {selected ? '▶ ' : '  '}
-                                    {`${index + 1}. ${entry.label}`}
-                                </Text>
+                            <Text
+                                key={entry.key}
+                                color={selected ? 'green' : undefined}
+                                wrap="truncate-end"
+                            >
+                                {selected ? '▶ ' : '  '}
+                                {`${index + 1}. ${entry.label}`}
+                                {entry.label !== entry.key ? ' ' : ''}
                                 {entry.label !== entry.key ? (
-                                    <Text dimColor>{`  $${entry.key}`}</Text>
+                                    <Text dimColor>{`$${entry.key}`}</Text>
                                 ) : null}
-                            </Box>
+                            </Text>
                         );
                     })}
+                    {moduleViewport.hiddenAfter > 0 ? (
+                        <Text
+                            dimColor
+                        >{`↓ ${moduleViewport.hiddenAfter} more module${moduleViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                    ) : null}
                     {selectedPickerEntry ? (
                         <Box marginTop={1} paddingLeft={2}>
                             <Text
                                 dimColor
+                                wrap="truncate-end"
                             >{`Apply $${selectedPickerEntry.key} to this slot.`}</Text>
                         </Box>
                     ) : null}
@@ -1089,7 +1203,7 @@ function InlinePreview({ segments }) {
     }
 
     return (
-        <Text>
+        <Text wrap="truncate-end">
             {visibleSegments.map((segment, index) => (
                 <Text
                     key={`${index}-${segment.text}`}
@@ -1519,6 +1633,50 @@ function getAdjacentValue(values, currentValue, step) {
     const nextIndex = clamp(startIndex + step, 0, values.length - 1);
 
     return values[nextIndex];
+}
+
+function resolveViewportRowCount(terminalHeight, reservedRows = VIEWPORT_RESERVED_ROWS) {
+    const fallbackHeight = process.stdout.rows || 40;
+    const safeTerminalHeight = Number(terminalHeight || fallbackHeight);
+
+    return clamp(safeTerminalHeight - reservedRows, MIN_VIEWPORT_ROWS, MAX_VIEWPORT_ROWS);
+}
+
+function buildViewport(items, selectedIndex, visibleItemCount) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    if (safeItems.length === 0) {
+        return {
+            items: [],
+            startIndex: 0,
+            hiddenBefore: 0,
+            hiddenAfter: 0,
+        };
+    }
+
+    const safeVisibleItemCount = clamp(visibleItemCount, 1, Math.max(1, safeItems.length));
+    const safeSelectedIndex = clamp(selectedIndex, 0, safeItems.length - 1);
+
+    if (safeItems.length <= safeVisibleItemCount) {
+        return {
+            items: safeItems,
+            startIndex: 0,
+            hiddenBefore: 0,
+            hiddenAfter: 0,
+        };
+    }
+
+    const halfWindow = Math.floor(safeVisibleItemCount / 2);
+    const maxStartIndex = safeItems.length - safeVisibleItemCount;
+    const startIndex = clamp(safeSelectedIndex - halfWindow, 0, maxStartIndex);
+    const endIndex = startIndex + safeVisibleItemCount;
+
+    return {
+        items: safeItems.slice(startIndex, endIndex),
+        startIndex,
+        hiddenBefore: startIndex,
+        hiddenAfter: safeItems.length - endIndex,
+    };
 }
 
 function clamp(value, min, max) {

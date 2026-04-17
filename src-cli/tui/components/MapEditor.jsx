@@ -4,7 +4,19 @@ import { TitledBox } from '@mishieck/ink-titled-box';
 
 import { removeMapEntry, upsertMapEntry } from '../../utils/settings-mutations.js';
 
-function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactive }) {
+const MIN_VIEWPORT_ROWS = 4;
+const MAX_VIEWPORT_ROWS = 12;
+const VIEWPORT_RESERVED_ROWS = 18;
+
+function MapEditor({
+    settings,
+    moduleKey,
+    fieldKey,
+    onBack,
+    onChange,
+    interactive,
+    terminalHeight,
+}) {
     const entries = useMemo(() => {
         const value = settings.modules[moduleKey]?.[fieldKey];
         return Object.entries(value || {});
@@ -12,6 +24,11 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [inputMode, setInputMode] = useState(false);
     const [buffer, setBuffer] = useState('');
+    const viewport = buildViewport(
+        entries,
+        selectedIndex,
+        Math.max(1, resolveViewportRowCount(terminalHeight) - 2)
+    );
 
     useInput(
         (input, key) => {
@@ -84,8 +101,13 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
     );
 
     return (
-        <TitledBox flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1} titles={[`${moduleKey}.${fieldKey}`]}>
-
+        <TitledBox
+            flexDirection="column"
+            borderStyle="round"
+            borderColor="magenta"
+            paddingX={1}
+            titles={[`${moduleKey}.${fieldKey}`]}
+        >
             <Text dimColor>A add E edit D delete ESC back</Text>
             {inputMode && (
                 <Text color="cyan">
@@ -97,15 +119,32 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
                 {entries.length === 0 ? (
                     <Text dimColor>(no entries)</Text>
                 ) : (
-                    entries.map((entry, index) => {
-                        const selected = index === selectedIndex;
-                        return (
-                            <Text key={entry[0]} color={selected ? 'green' : undefined}>
-                                {selected ? '▶ ' : '  '}
-                                {entry[0]} = {entry[1]}
-                            </Text>
-                        );
-                    })
+                    <>
+                        {viewport.hiddenBefore > 0 ? (
+                            <Text
+                                dimColor
+                            >{`↑ ${viewport.hiddenBefore} more entry${viewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                        ) : null}
+                        {viewport.items.map((entry, offset) => {
+                            const index = viewport.startIndex + offset;
+                            const selected = index === selectedIndex;
+                            return (
+                                <Text
+                                    key={entry[0]}
+                                    color={selected ? 'green' : undefined}
+                                    wrap="truncate-end"
+                                >
+                                    {selected ? '▶ ' : '  '}
+                                    {entry[0]} = {entry[1]}
+                                </Text>
+                            );
+                        })}
+                        {viewport.hiddenAfter > 0 ? (
+                            <Text
+                                dimColor
+                            >{`↓ ${viewport.hiddenAfter} more entry${viewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                        ) : null}
+                    </>
                 )}
             </Box>
         </TitledBox>
@@ -115,6 +154,51 @@ function MapEditor({ settings, moduleKey, fieldKey, onBack, onChange, interactiv
         setInputMode(false);
         setBuffer('');
     }
+}
+
+function resolveViewportRowCount(terminalHeight, reservedRows = VIEWPORT_RESERVED_ROWS) {
+    const fallbackHeight = process.stdout.rows || 40;
+    const safeTerminalHeight = Number(terminalHeight || fallbackHeight);
+
+    return clamp(safeTerminalHeight - reservedRows, MIN_VIEWPORT_ROWS, MAX_VIEWPORT_ROWS);
+}
+
+function buildViewport(items, selectedIndex, visibleItemCount) {
+    if (!Array.isArray(items) || items.length === 0) {
+        return {
+            items: [],
+            startIndex: 0,
+            hiddenBefore: 0,
+            hiddenAfter: 0,
+        };
+    }
+
+    const safeVisibleItemCount = clamp(visibleItemCount, 1, items.length);
+    const safeSelectedIndex = clamp(selectedIndex, 0, items.length - 1);
+
+    if (items.length <= safeVisibleItemCount) {
+        return {
+            items,
+            startIndex: 0,
+            hiddenBefore: 0,
+            hiddenAfter: 0,
+        };
+    }
+
+    const halfWindow = Math.floor(safeVisibleItemCount / 2);
+    const startIndex = clamp(
+        safeSelectedIndex - halfWindow,
+        0,
+        items.length - safeVisibleItemCount
+    );
+    const endIndex = startIndex + safeVisibleItemCount;
+
+    return {
+        items: items.slice(startIndex, endIndex),
+        startIndex,
+        hiddenBefore: startIndex,
+        hiddenAfter: items.length - endIndex,
+    };
 }
 
 function clamp(value, min, max) {

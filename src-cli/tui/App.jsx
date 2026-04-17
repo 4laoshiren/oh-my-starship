@@ -26,6 +26,7 @@ function App() {
     const [selectedModule, setSelectedModule] = useState('hostname');
     const [selectedMapField, setSelectedMapField] = useState(null);
     const [terminalWidth, setTerminalWidth] = useState(process.stdout.columns || 120);
+    const [terminalHeight, setTerminalHeight] = useState(process.stdout.rows || 40);
     const [flash, setFlash] = useState({ color: 'green', text: 'Ready' });
     const interactive = Boolean(process.stdin.isTTY && process.stdin.setRawMode);
     const dirty = useMemo(
@@ -36,6 +37,7 @@ function App() {
     useEffect(() => {
         const onResize = () => {
             setTerminalWidth(process.stdout.columns || 120);
+            setTerminalHeight(process.stdout.rows || 40);
         };
 
         process.stdout.on('resize', onResize);
@@ -113,6 +115,7 @@ function App() {
                     onChange={updateSettings}
                     onBack={() => setScreen(SCREENS.MAIN)}
                     interactive={interactive}
+                    terminalHeight={terminalHeight}
                 />
             );
         }
@@ -130,6 +133,7 @@ function App() {
                         setScreen(SCREENS.MODULE_EDITOR);
                     }}
                     interactive={interactive}
+                    terminalHeight={terminalHeight}
                 />
             );
         }
@@ -147,6 +151,7 @@ function App() {
                         setScreen(SCREENS.MAP_EDITOR);
                     }}
                     interactive={interactive}
+                    terminalHeight={terminalHeight}
                 />
             );
         }
@@ -160,6 +165,7 @@ function App() {
                     onBack={() => setScreen(SCREENS.MODULE_EDITOR)}
                     onChange={updateSettings}
                     interactive={interactive}
+                    terminalHeight={terminalHeight}
                 />
             );
         }
