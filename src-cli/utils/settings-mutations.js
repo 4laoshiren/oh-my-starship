@@ -241,10 +241,10 @@ function createDefaultPromptItem(type) {
     }
 
     if (type === 'rawText') {
-        return createPromptItem('rawText', { text: 'text' });
+        return createPromptItem('rawText', { text: '' });
     }
 
-    return createPromptItem('styledText', { text: 'segment', style: 'none' });
+    return createPromptItem('styledText', { text: '', style: 'none' });
 }
 
 function cloneSettings(settings) {

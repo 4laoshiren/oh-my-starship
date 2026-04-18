@@ -2,16 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
 
-import {
-    MODULE_GROUPS,
-    MODULE_ORDER,
-    MODULE_SCHEMAS,
-    SEPARATOR_PRESETS,
-} from '../../types/settings.js';
+import { MODULE_ORDER, MODULE_SCHEMAS, SEPARATOR_PRESETS } from '../../types/settings.js';
 import {
     addPromptItem,
     addPromptLine,
-    cyclePromptFrameGlyph,
     removePromptItem,
     removePromptLine,
     replacePromptItem,
@@ -27,37 +21,8 @@ const MODE_ROWS = 'rows';
 const MIN_VIEWPORT_ROWS = 4;
 const MAX_VIEWPORT_ROWS = 12;
 const VIEWPORT_RESERVED_ROWS = 22;
-
-const ADD_TYPE_OPTIONS = [
-    {
-        key: 'module',
-        label: 'Module',
-        description: 'Insert a Starship module placeholder such as $directory.',
-    },
-    {
-        key: 'text',
-        label: 'Text',
-        description: 'Create literal text and style it inline when needed.',
-    },
-    {
-        key: 'frame',
-        label: 'Frame',
-        description: 'Insert a visible frame glyph as a real prompt item.',
-    },
-];
-
-const CHANGE_TYPE_OPTIONS = [
-    {
-        key: 'module',
-        label: 'Module',
-        description: 'Switch this slot to a Starship module.',
-    },
-    {
-        key: 'text',
-        label: 'Text',
-        description: 'Switch this slot to editable literal text.',
-    },
-];
+const CONTENT_TEXT_KEY = 'content:text';
+const CONTENT_FRAME_KEY = 'content:frame';
 
 function LayoutEditor({
     settings,
@@ -83,7 +48,7 @@ function LayoutEditor({
     const safeSelectedLineIndex = clamp(selectedLineIndex, 0, Math.max(0, lines.length - 1));
     const moveMode = Boolean(moveDraft);
     const activeLineItems = moveDraft?.lineItems || lines[safeSelectedLineIndex] || [];
-    const modulePickerCatalog = useMemo(() => buildModulePickerCatalog(settings), [settings]);
+    const contentPickerCatalog = useMemo(() => buildContentPickerCatalog(settings), [settings]);
     const rows = useMemo(
         () => buildLayoutRows(settings, safeSelectedLineIndex, activeLineItems),
         [activeLineItems, safeSelectedLineIndex, settings]
@@ -95,18 +60,9 @@ function LayoutEditor({
     );
     const selectedRow = rows[activeSelectedRowIndex] || null;
     const listViewportRows = resolveViewportRowCount(terminalHeight);
-    const pickerTypeOptions = picker?.action === 'change' ? CHANGE_TYPE_OPTIONS : ADD_TYPE_OPTIONS;
-    const selectedTypeEntry = picker
-        ? pickerTypeOptions.find((entry) => entry.key === picker.selectedType) ||
-          pickerTypeOptions[0] ||
-          null
-        : null;
-    const pickerCategoryEntries = picker
-        ? getModulePickerEntries(modulePickerCatalog, picker.selectedCategory)
-        : [];
     const selectedPickerEntry = picker
-        ? pickerCategoryEntries.find((entry) => entry.key === picker.selectedModule) ||
-          pickerCategoryEntries[0] ||
+        ? contentPickerCatalog.entries.find((entry) => entry.key === picker.selectedEntryKey) ||
+          contentPickerCatalog.entries[0] ||
           null
         : null;
 
@@ -133,16 +89,8 @@ function LayoutEditor({
     );
 
     const helpText = useMemo(() => {
-        if (picker?.level === 'type') {
-            return '↑↓ select type  Enter apply/continue  ESC cancel';
-        }
-
-        if (picker?.level === 'module-category') {
-            return '↑↓ select module group  Enter continue  ESC back';
-        }
-
-        if (picker?.level === 'module') {
-            return '↑↓ select module  Enter apply  ESC back';
+        if (picker) {
+            return '↑↓ select content  Enter apply  ESC cancel';
         }
 
         if (moveMode) {
@@ -223,10 +171,7 @@ function LayoutEditor({
             ) : picker ? (
                 <PickerView
                     picker={picker}
-                    selectedTypeEntry={selectedTypeEntry}
-                    typeOptions={pickerTypeOptions}
-                    categories={modulePickerCatalog.categories}
-                    categoryEntries={pickerCategoryEntries}
+                    entries={contentPickerCatalog.entries}
                     selectedPickerEntry={selectedPickerEntry}
                     viewportRows={listViewportRows}
                 />
@@ -275,66 +220,13 @@ function LayoutEditor({
 
     function handlePickerInput(input, key) {
         if (key.escape) {
-            if (picker.level === 'module') {
-                setPicker((previous) => ({
-                    ...previous,
-                    level: 'module-category',
-                }));
-                return;
-            }
-
-            if (picker.level === 'module-category') {
-                setPicker((previous) => ({
-                    ...previous,
-                    level: 'type',
-                }));
-                return;
-            }
-
             setPicker(null);
             return;
         }
 
         if (key.return) {
-            if (picker.level === 'type') {
-                if (!selectedTypeEntry) {
-                    setPicker(null);
-                    return;
-                }
-
-                if (selectedTypeEntry.key === 'module') {
-                    setPicker((previous) => ({
-                        ...previous,
-                        level: 'module-category',
-                        selectedCategory: previous.selectedCategory || 'All',
-                        selectedModule: getDefaultModuleSelection(
-                            modulePickerCatalog,
-                            previous.selectedCategory || 'All',
-                            previous.selectedModule
-                        ),
-                    }));
-                    return;
-                }
-
-                applyPickerTypeSelection(selectedTypeEntry.key);
-                return;
-            }
-
-            if (picker.level === 'module-category') {
-                setPicker((previous) => ({
-                    ...previous,
-                    level: 'module',
-                    selectedModule: getDefaultModuleSelection(
-                        modulePickerCatalog,
-                        previous.selectedCategory,
-                        previous.selectedModule
-                    ),
-                }));
-                return;
-            }
-
             if (selectedPickerEntry) {
-                applyPickerTypeSelection('module', { module: selectedPickerEntry.key });
+                applyPickerSelection(selectedPickerEntry);
             }
             return;
         }
@@ -342,66 +234,39 @@ function LayoutEditor({
         if (key.upArrow || key.downArrow) {
             const step = key.downArrow ? 1 : -1;
 
-            if (picker.level === 'type') {
-                setPicker((previous) => ({
-                    ...previous,
-                    selectedType: getAdjacentValue(
-                        pickerTypeOptions.map((entry) => entry.key),
-                        previous.selectedType,
-                        step
-                    ),
-                }));
-                return;
-            }
-
-            if (picker.level === 'module-category') {
-                const nextCategory = getAdjacentValue(
-                    modulePickerCatalog.categories,
-                    picker.selectedCategory,
-                    step
-                );
-                setPicker((previous) => ({
-                    ...previous,
-                    selectedCategory: nextCategory,
-                    selectedModule: getDefaultModuleSelection(
-                        modulePickerCatalog,
-                        nextCategory,
-                        previous.selectedModule
-                    ),
-                }));
-                return;
-            }
-
             setPicker((previous) => ({
                 ...previous,
-                selectedModule: getAdjacentValue(
-                    pickerCategoryEntries.map((entry) => entry.key),
-                    previous.selectedModule,
+                selectedEntryKey: getAdjacentValue(
+                    contentPickerCatalog.entries.map((entry) => entry.key),
+                    previous.selectedEntryKey,
                     step
                 ),
             }));
         }
     }
 
-    function applyPickerTypeSelection(type, patch = {}) {
-        const promptType = type === 'text' ? 'styledText' : type;
+    function applyPickerSelection(entry) {
+        if (!entry) {
+            setPicker(null);
+            return;
+        }
 
         if (picker?.action === 'add') {
             const result = addPromptItem(
                 settings,
                 safeSelectedLineIndex,
                 picker.insertAfterItemIndex,
-                promptType
+                entry.itemType
             );
             let nextSettings = result.settings;
 
-            if (type === 'module' && patch.module) {
+            if (entry.itemType === 'module' && entry.moduleKey) {
                 nextSettings = updatePromptItem(
                     nextSettings,
                     safeSelectedLineIndex,
                     result.itemIndex,
                     {
-                        module: patch.module,
+                        module: entry.moduleKey,
                     }
                 );
             }
@@ -411,33 +276,12 @@ function LayoutEditor({
             return;
         }
 
-        if (!selectedRow || selectedRow.kind !== 'item') {
+        if (!selectedRow) {
             setPicker(null);
             return;
         }
 
-        if (type === 'text') {
-            if (selectedRow.item.type === 'styledText' || selectedRow.item.type === 'rawText') {
-                setPicker(null);
-                return;
-            }
-
-            const nextSettings = replacePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                'styledText'
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
-            setPicker(null);
-            return;
-        }
-
-        if (
-            selectedRow.item.type === 'module' &&
-            selectedRow.item.module === patch.module &&
-            patch.module
-        ) {
+        if (isSameContentSelection(selectedRow.item, entry)) {
             setPicker(null);
             return;
         }
@@ -446,10 +290,10 @@ function LayoutEditor({
             settings,
             safeSelectedLineIndex,
             selectedRow.itemIndex,
-            'module',
-            patch
+            entry.itemType,
+            entry.itemType === 'module' && entry.moduleKey ? { module: entry.moduleKey } : {}
         );
-        commitSettings(nextSettings, { rowId: selectedRow.id });
+        commitSettings(nextSettings, { itemIndex: selectedRow.itemIndex });
         setPicker(null);
     }
 
@@ -550,18 +394,7 @@ function LayoutEditor({
         }
 
         if (key.leftArrow || key.rightArrow) {
-            if (selectedRow.kind === 'item') {
-                openChangePicker(selectedRow);
-                return;
-            }
-
-            const nextSettings = cyclePromptFrameGlyph(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                key.rightArrow ? 1 : -1
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
+            openChangePicker(selectedRow);
             return;
         }
 
@@ -638,34 +471,25 @@ function LayoutEditor({
     function openAddPicker() {
         setPicker({
             action: 'add',
-            level: 'type',
-            selectedType: ADD_TYPE_OPTIONS[0].key,
-            selectedCategory: 'All',
-            selectedModule: getDefaultModuleSelection(modulePickerCatalog, 'All'),
+            selectedEntryKey: getDefaultContentSelection(
+                contentPickerCatalog,
+                resolveContentPickerKey(selectedRow?.item)
+            ),
             insertAfterItemIndex: selectedRow ? selectedRow.itemIndex : -1,
         });
     }
 
     function openChangePicker(row) {
-        if (!row || row.kind !== 'item') {
+        if (!row) {
             return;
         }
 
-        const selectedCategory =
-            row.item.type === 'module'
-                ? resolveModuleCategory(modulePickerCatalog, row.item.module)
-                : 'All';
-        const selectedModule =
-            row.item.type === 'module'
-                ? getDefaultModuleSelection(modulePickerCatalog, selectedCategory, row.item.module)
-                : getDefaultModuleSelection(modulePickerCatalog, 'All');
-
         setPicker({
             action: 'change',
-            level: 'type',
-            selectedType: getVisibleItemType(row.item),
-            selectedCategory,
-            selectedModule,
+            selectedEntryKey: getDefaultContentSelection(
+                contentPickerCatalog,
+                resolveContentPickerKey(row.item)
+            ),
             insertAfterItemIndex: row.itemIndex,
         });
     }
@@ -709,7 +533,7 @@ function RowsView({ rows, selectedRowIndex, selectedRow, moveMode, viewportRows 
             {rows.length === 0 ? (
                 <>
                     <Text dimColor>(empty line)</Text>
-                    <Text dimColor>Press A to add a module, text, or frame.</Text>
+                    <Text dimColor>Press A to add text, frame, or a module.</Text>
                 </>
             ) : (
                 <>
@@ -779,111 +603,32 @@ function LayoutRow({ row, selected, moveMode }) {
     );
 }
 
-function PickerView({
-    picker,
-    selectedTypeEntry,
-    typeOptions,
-    categories,
-    categoryEntries,
-    selectedPickerEntry,
-    viewportRows,
-}) {
+function PickerView({ picker, entries, selectedPickerEntry, viewportRows }) {
     const visibleItemCount = Math.max(1, viewportRows - 2);
-    const selectedTypeIndex = Math.max(
+    const selectedEntryIndex = Math.max(
         0,
-        typeOptions.findIndex((entry) => entry.key === selectedTypeEntry?.key)
+        entries.findIndex((entry) => entry.key === selectedPickerEntry?.key)
     );
-    const selectedCategoryIndex = Math.max(0, categories.indexOf(picker.selectedCategory));
-    const selectedModuleIndex = Math.max(
-        0,
-        categoryEntries.findIndex((entry) => entry.key === selectedPickerEntry?.key)
-    );
-    const typeViewport = buildViewport(typeOptions, selectedTypeIndex, visibleItemCount);
-    const categoryViewport = buildViewport(categories, selectedCategoryIndex, visibleItemCount);
-    const moduleViewport = buildViewport(categoryEntries, selectedModuleIndex, visibleItemCount);
+    const entryViewport = buildViewport(entries, selectedEntryIndex, visibleItemCount);
 
     return (
         <Box marginTop={1} flexDirection="column">
             <Text dimColor>
-                {picker.action === 'add' ? 'Add into current line.' : 'Change current slot type.'}
+                {picker.action === 'add'
+                    ? 'Add content into current line.'
+                    : 'Select content for current slot.'}
             </Text>
-            {picker.level === 'type' ? (
-                <>
-                    {typeViewport.hiddenBefore > 0 ? (
-                        <Text
-                            dimColor
-                        >{`↑ ${typeViewport.hiddenBefore} more option${typeViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
-                    ) : null}
-                    {typeViewport.items.map((entry, offset) => {
-                        const index = typeViewport.startIndex + offset;
-                        const selected = entry.key === selectedTypeEntry?.key;
-                        return (
-                            <Text
-                                key={entry.key}
-                                color={selected ? 'green' : undefined}
-                                wrap="truncate-end"
-                            >
-                                {selected ? '▶ ' : '  '}
-                                {`${index + 1}. ${entry.label}`}
-                            </Text>
-                        );
-                    })}
-                    {typeViewport.hiddenAfter > 0 ? (
-                        <Text
-                            dimColor
-                        >{`↓ ${typeViewport.hiddenAfter} more option${typeViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
-                    ) : null}
-                    {selectedTypeEntry ? (
-                        <Box marginTop={1} paddingLeft={2}>
-                            <Text dimColor wrap="truncate-end">
-                                {selectedTypeEntry.description}
-                            </Text>
-                        </Box>
-                    ) : null}
-                </>
-            ) : picker.level === 'module-category' ? (
-                <>
-                    {categoryViewport.hiddenBefore > 0 ? (
-                        <Text
-                            dimColor
-                        >{`↑ ${categoryViewport.hiddenBefore} more group${categoryViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
-                    ) : null}
-                    {categoryViewport.items.map((category, offset) => {
-                        const index = categoryViewport.startIndex + offset;
-                        const selected = category === picker.selectedCategory;
-                        return (
-                            <Text
-                                key={category}
-                                color={selected ? 'green' : undefined}
-                                wrap="truncate-end"
-                            >
-                                {selected ? '▶ ' : '  '}
-                                {`${index + 1}. ${category}`}
-                            </Text>
-                        );
-                    })}
-                    {categoryViewport.hiddenAfter > 0 ? (
-                        <Text
-                            dimColor
-                        >{`↓ ${categoryViewport.hiddenAfter} more group${categoryViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
-                    ) : null}
-                    <Box marginTop={1} paddingLeft={2}>
-                        <Text dimColor wrap="truncate-end">
-                            {getModuleCategoryHint(picker.selectedCategory)}
-                        </Text>
-                    </Box>
-                </>
-            ) : categoryEntries.length === 0 ? (
-                <Text dimColor>No modules available in this group.</Text>
+            {entries.length === 0 ? (
+                <Text dimColor>No content options available.</Text>
             ) : (
                 <>
-                    {moduleViewport.hiddenBefore > 0 ? (
+                    {entryViewport.hiddenBefore > 0 ? (
                         <Text
                             dimColor
-                        >{`↑ ${moduleViewport.hiddenBefore} more module${moduleViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
+                        >{`↑ ${entryViewport.hiddenBefore} more option${entryViewport.hiddenBefore === 1 ? '' : 's'}`}</Text>
                     ) : null}
-                    {moduleViewport.items.map((entry, offset) => {
-                        const index = moduleViewport.startIndex + offset;
+                    {entryViewport.items.map((entry, offset) => {
+                        const index = entryViewport.startIndex + offset;
                         const selected = entry.key === selectedPickerEntry?.key;
                         return (
                             <Text
@@ -893,24 +638,21 @@ function PickerView({
                             >
                                 {selected ? '▶ ' : '  '}
                                 {`${index + 1}. ${entry.label}`}
-                                {entry.label !== entry.key ? ' ' : ''}
-                                {entry.label !== entry.key ? (
-                                    <Text dimColor>{`$${entry.key}`}</Text>
-                                ) : null}
+                                {entry.tokenLabel ? ' ' : ''}
+                                {entry.tokenLabel ? <Text dimColor>{entry.tokenLabel}</Text> : null}
                             </Text>
                         );
                     })}
-                    {moduleViewport.hiddenAfter > 0 ? (
+                    {entryViewport.hiddenAfter > 0 ? (
                         <Text
                             dimColor
-                        >{`↓ ${moduleViewport.hiddenAfter} more module${moduleViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
+                        >{`↓ ${entryViewport.hiddenAfter} more option${entryViewport.hiddenAfter === 1 ? '' : 's'}`}</Text>
                     ) : null}
                     {selectedPickerEntry ? (
                         <Box marginTop={1} paddingLeft={2}>
-                            <Text
-                                dimColor
-                                wrap="truncate-end"
-                            >{`Apply $${selectedPickerEntry.key} to this slot.`}</Text>
+                            <Text dimColor wrap="truncate-end">
+                                {selectedPickerEntry.description}
+                            </Text>
                         </Box>
                     ) : null}
                 </>
@@ -1111,11 +853,7 @@ function buildRowHelpText(row, moveMode) {
         return 'A add slot  ESC lines';
     }
 
-    if (row.kind === 'item') {
-        return '↑↓ select row  A add  ←→ change type  E open detail  Enter move  D delete  ESC lines';
-    }
-
-    return '↑↓ select row  A add  ←→ cycle glyph  E open detail  Enter move  D delete  ESC lines';
+    return '↑↓ select row  A add  ←→ select content  E open detail  Enter move  D delete  ESC lines';
 }
 
 function buildPreviewSettings(settings, lineIndex, lineItems) {
@@ -1160,49 +898,33 @@ function applyMoveDraftStep(moveDraft, step) {
     };
 }
 
-function buildModulePickerCatalog(settings) {
-    const modulesByCategory = new Map();
-    const moduleCategoryMap = new Map();
-    const customCategory = 'Custom';
-
-    modulesByCategory.set('All', []);
-
-    for (const group of MODULE_GROUPS) {
-        modulesByCategory.set(group.label, []);
-        for (const moduleKey of group.modules) {
-            moduleCategoryMap.set(moduleKey, group.label);
-        }
-    }
-
-    modulesByCategory.set(customCategory, []);
-
-    for (const moduleKey of collectModuleKeys(settings)) {
-        const category = moduleCategoryMap.get(moduleKey) || customCategory;
-        const entry = {
-            key: moduleKey,
-            label: MODULE_SCHEMAS[moduleKey]?.label || humanizeModuleKey(moduleKey),
-            category,
-        };
-
-        modulesByCategory.get('All').push(entry);
-        modulesByCategory.get(category).push(entry);
-    }
-
-    const categories = ['All'];
-
-    for (const group of MODULE_GROUPS) {
-        if ((modulesByCategory.get(group.label) || []).length > 0) {
-            categories.push(group.label);
-        }
-    }
-
-    if ((modulesByCategory.get(customCategory) || []).length > 0) {
-        categories.push(customCategory);
-    }
-
+function buildContentPickerCatalog(settings) {
     return {
-        categories,
-        modulesByCategory,
+        entries: [
+            {
+                key: CONTENT_TEXT_KEY,
+                label: 'Text',
+                tokenLabel: null,
+                itemType: 'styledText',
+                description: 'Editable literal text with inline style and color fields.',
+            },
+            {
+                key: CONTENT_FRAME_KEY,
+                label: 'Frame',
+                tokenLabel: null,
+                itemType: 'frame',
+                description:
+                    'Visible separator glyph with colors inherited from the slots beside it.',
+            },
+            ...collectModuleKeys(settings).map((moduleKey) => ({
+                key: `module:${moduleKey}`,
+                label: MODULE_SCHEMAS[moduleKey]?.label || humanizeModuleKey(moduleKey),
+                tokenLabel: `$${moduleKey}`,
+                itemType: 'module',
+                moduleKey,
+                description: `Insert the ${MODULE_SCHEMAS[moduleKey]?.label || humanizeModuleKey(moduleKey)} module in this slot.`,
+            })),
+        ],
     };
 }
 
@@ -1222,61 +944,40 @@ function collectModuleKeys(settings) {
     );
 }
 
-function getModulePickerEntries(catalog, category) {
-    return catalog.modulesByCategory.get(category) || catalog.modulesByCategory.get('All') || [];
+function getDefaultContentSelection(catalog, preferredKey) {
+    if (preferredKey && catalog.entries.some((entry) => entry.key === preferredKey)) {
+        return preferredKey;
+    }
+
+    return catalog.entries[0]?.key || null;
 }
 
-function getDefaultModuleSelection(catalog, category, preferredModule) {
-    const entries = getModulePickerEntries(catalog, category || 'All');
-
-    if (preferredModule && entries.some((entry) => entry.key === preferredModule)) {
-        return preferredModule;
+function resolveContentPickerKey(item) {
+    if (item?.type === 'module' && item.module) {
+        return `module:${item.module}`;
     }
 
-    return entries[0]?.key || preferredModule || null;
+    if (item?.type === 'frame') {
+        return CONTENT_FRAME_KEY;
+    }
+
+    return CONTENT_TEXT_KEY;
 }
 
-function resolveModuleCategory(catalog, moduleKey) {
-    for (const category of catalog.categories) {
-        if (category === 'All') {
-            continue;
-        }
-
-        const entries = catalog.modulesByCategory.get(category) || [];
-        if (entries.some((entry) => entry.key === moduleKey)) {
-            return category;
-        }
+function isSameContentSelection(item, entry) {
+    if (!item || !entry) {
+        return false;
     }
 
-    return 'All';
-}
-
-function getVisibleItemType(item) {
-    return item?.type === 'module' ? 'module' : 'text';
-}
-
-function getModuleCategoryHint(category) {
-    if (category === 'All') {
-        return 'Browse every available prompt module.';
+    if (entry.itemType === 'module') {
+        return item.type === 'module' && item.module === entry.moduleKey;
     }
 
-    if (category === 'Git') {
-        return 'Git-related prompt modules.';
+    if (entry.itemType === 'frame') {
+        return item.type === 'frame';
     }
 
-    if (category === 'Languages') {
-        return 'Language runtime and toolchain modules.';
-    }
-
-    if (category === 'Prompt End') {
-        return 'Prompt tail modules such as time and character.';
-    }
-
-    if (category === 'Custom') {
-        return 'Modules discovered from your current settings or prompt.';
-    }
-
-    return 'Core prompt modules for this group.';
+    return item.type === 'styledText' || item.type === 'rawText';
 }
 
 function findPreviousContentItem(line, startIndex) {
