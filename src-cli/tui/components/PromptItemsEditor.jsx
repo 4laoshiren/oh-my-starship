@@ -16,23 +16,11 @@ import {
     removePromptLine,
     replacePromptItem,
     replacePromptLine,
-    togglePromptFrameInvert,
     updatePromptItem,
 } from '../../utils/settings-mutations.js';
 import { parseStyle, resolvePromptItemBackground } from '../../utils/prompt-format.js';
-import {
-    buildColorTargets,
-    clearColorTargetChannel,
-    resolveModuleColors,
-    updateColorTarget,
-} from '../../utils/color-targets.js';
-import {
-    colorToInk,
-    cycleNamedColor,
-    displayColorName,
-    normalizeAnsiInput,
-    normalizeHexInput,
-} from '../../utils/colors.js';
+import { resolveModuleColors } from '../../utils/color-targets.js';
+import { colorToInk, displayColorName } from '../../utils/colors.js';
 
 const MODE_LINES = 'lines';
 const MODE_ROWS = 'rows';
@@ -75,18 +63,20 @@ function LayoutEditor({
     settings,
     onChange,
     onPreviewChange,
+    initialSelection,
+    onSelectionChange,
+    onEditModule,
+    onEditPromptItem,
     onBack,
     interactive,
     terminalHeight,
 }) {
-    const [mode, setMode] = useState(MODE_LINES);
-    const [selectedLineIndex, setSelectedLineIndex] = useState(0);
-    const [selectedRowIndex, setSelectedRowIndex] = useState(0);
+    const [mode, setMode] = useState(initialSelection?.mode === MODE_ROWS ? MODE_ROWS : MODE_LINES);
+    const [selectedLineIndex, setSelectedLineIndex] = useState(initialSelection?.lineIndex || 0);
+    const [selectedRowIndex, setSelectedRowIndex] = useState(initialSelection?.rowIndex || 0);
     // move mode 期间只在当前组件里重排，退出时再一次性写回 settings，避免按住方向键时整页重算
     const [moveDraft, setMoveDraft] = useState(null);
     const [picker, setPicker] = useState(null);
-    const [editorState, setEditorState] = useState(null);
-    const [colorMode, setColorMode] = useState(null);
     const moveDraftRef = useRef(null);
 
     const lines = settings.prompt.lines;
@@ -94,7 +84,6 @@ function LayoutEditor({
     const moveMode = Boolean(moveDraft);
     const activeLineItems = moveDraft?.lineItems || lines[safeSelectedLineIndex] || [];
     const modulePickerCatalog = useMemo(() => buildModulePickerCatalog(settings), [settings]);
-    const colorTargetsById = useMemo(() => buildColorTargetMap(settings), [settings]);
     const rows = useMemo(
         () => buildLayoutRows(settings, safeSelectedLineIndex, activeLineItems),
         [activeLineItems, safeSelectedLineIndex, settings]
@@ -105,9 +94,6 @@ function LayoutEditor({
         Math.max(0, rows.length - 1)
     );
     const selectedRow = rows[activeSelectedRowIndex] || null;
-    const selectedColorTarget = moveMode
-        ? null
-        : resolveSelectedColorTarget(selectedRow, colorTargetsById);
     const listViewportRows = resolveViewportRowCount(terminalHeight);
     const pickerTypeOptions = picker?.action === 'change' ? CHANGE_TYPE_OPTIONS : ADD_TYPE_OPTIONS;
     const selectedTypeEntry = picker
@@ -126,18 +112,8 @@ function LayoutEditor({
 
     useInput(
         (input, key) => {
-            if (editorState) {
-                handleEditorInput(input, key);
-                return;
-            }
-
             if (picker) {
                 handlePickerInput(input, key);
-                return;
-            }
-
-            if (colorMode) {
-                handleColorModeInput(input, key);
                 return;
             }
 
@@ -157,26 +133,6 @@ function LayoutEditor({
     );
 
     const helpText = useMemo(() => {
-        if (editorState?.kind === 'text') {
-            return 'Editing text. Enter save  ESC cancel';
-        }
-
-        if (editorState?.kind === 'style') {
-            return 'Editing style string. Enter save  ESC cancel';
-        }
-
-        if (editorState?.kind === 'glyph') {
-            return 'Editing frame glyph. Enter save  ESC cancel';
-        }
-
-        if (editorState?.kind === 'color-hex') {
-            return 'Type 6 hex digits. Enter apply  ESC cancel';
-        }
-
-        if (editorState?.kind === 'color-ansi') {
-            return 'Type ANSI 0-255. Enter apply  ESC cancel';
-        }
-
         if (picker?.level === 'type') {
             return '↑↓ select type  Enter apply/continue  ESC cancel';
         }
@@ -193,16 +149,12 @@ function LayoutEditor({
             return '↑↓ move row  Enter/ESC done';
         }
 
-        if (colorMode) {
-            return '←→ named color  F switch fg/bg  H hex  A ansi256  R clear  ESC done';
-        }
-
         if (mode === MODE_LINES) {
             return '↑↓ select line  Enter edit line  A add line  D delete line  ESC back';
         }
 
         return buildRowHelpText(selectedRow, moveMode);
-    }, [colorMode, editorState, mode, moveMode, picker, selectedRow]);
+    }, [mode, moveMode, picker, selectedRow]);
 
     useEffect(() => {
         if (!onPreviewChange) {
@@ -230,6 +182,18 @@ function LayoutEditor({
         };
     }, [onPreviewChange]);
 
+    useEffect(() => {
+        if (!onSelectionChange) {
+            return;
+        }
+
+        onSelectionChange({
+            mode,
+            lineIndex: safeSelectedLineIndex,
+            rowIndex: activeSelectedRowIndex,
+        });
+    }, [activeSelectedRowIndex, mode, onSelectionChange, safeSelectedLineIndex]);
+
     return (
         <TitledBox
             flexDirection="column"
@@ -238,7 +202,7 @@ function LayoutEditor({
             paddingX={1}
             titles={['Prompt Layout']}
         >
-            <Text dimColor>Content, frames, and inline colors now live in one layout editor.</Text>
+            <Text dimColor>Use E to open the selected slot detail editor.</Text>
             <Text dimColor>{helpText}</Text>
             {mode === MODE_ROWS ? (
                 <Box>
@@ -250,14 +214,6 @@ function LayoutEditor({
                     {`${lines.length} line${lines.length === 1 ? '' : 's'} in prompt`}
                 </Text>
             )}
-            {colorMode ? (
-                <ColorModeSummary
-                    row={selectedRow}
-                    channel={colorMode.channel}
-                    colorTarget={selectedColorTarget}
-                />
-            ) : null}
-            {editorState ? <EditorStateSummary editorState={editorState} /> : null}
             {mode === MODE_LINES ? (
                 <LinesView
                     lines={lines}
@@ -315,137 +271,6 @@ function LayoutEditor({
         if (typeof selection.fallbackRowIndex === 'number') {
             setSelectedRowIndex(selection.fallbackRowIndex);
         }
-    }
-
-    function handleEditorInput(input, key) {
-        if (key.escape) {
-            setEditorState(null);
-            return;
-        }
-
-        if (key.return) {
-            commitEditorState();
-            return;
-        }
-
-        if (key.backspace || key.delete) {
-            setEditorState((previous) =>
-                previous ? { ...previous, buffer: previous.buffer.slice(0, -1) } : previous
-            );
-            return;
-        }
-
-        if (!input) {
-            return;
-        }
-
-        if (editorState.kind === 'color-hex') {
-            const upperInput = input.toUpperCase();
-            if (/^[0-9A-F]$/.test(upperInput) && editorState.buffer.length < 6) {
-                setEditorState((previous) => ({
-                    ...previous,
-                    buffer: previous.buffer + upperInput,
-                }));
-            }
-            return;
-        }
-
-        if (editorState.kind === 'color-ansi') {
-            if (!/^\d$/.test(input) || editorState.buffer.length >= 3) {
-                return;
-            }
-
-            const nextValue = `${editorState.buffer}${input}`;
-            const parsed = Number.parseInt(nextValue, 10);
-            if (parsed <= 255) {
-                setEditorState((previous) => ({
-                    ...previous,
-                    buffer: nextValue,
-                }));
-            }
-            return;
-        }
-
-        setEditorState((previous) => ({
-            ...previous,
-            buffer: previous.buffer + input,
-        }));
-    }
-
-    function commitEditorState() {
-        if (!editorState || !selectedRow) {
-            setEditorState(null);
-            return;
-        }
-
-        if (editorState.kind === 'text' && selectedRow.kind === 'item') {
-            const nextSettings = updatePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                {
-                    text: editorState.buffer,
-                }
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
-            setEditorState(null);
-            return;
-        }
-
-        if (
-            editorState.kind === 'style' &&
-            selectedRow.kind === 'item' &&
-            selectedRow.item.type === 'styledText'
-        ) {
-            const nextSettings = updatePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                {
-                    style: editorState.buffer || 'none',
-                }
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
-            setEditorState(null);
-            return;
-        }
-
-        if (editorState.kind === 'glyph' && selectedRow.kind === 'frame') {
-            const nextSettings = updatePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex,
-                {
-                    glyph: editorState.buffer || SEPARATOR_PRESETS[0] || '',
-                }
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
-            setEditorState(null);
-            return;
-        }
-
-        if (!selectedColorTarget || !colorMode) {
-            setEditorState(null);
-            return;
-        }
-
-        const nextValue =
-            editorState.kind === 'color-hex'
-                ? normalizeHexInput(editorState.buffer)
-                : normalizeAnsiInput(editorState.buffer);
-
-        if (!nextValue) {
-            return;
-        }
-
-        const nextSettings = updateColorTarget(
-            settings,
-            selectedColorTarget.id,
-            colorMode.channel,
-            nextValue
-        );
-        commitSettings(nextSettings, { rowId: selectedRow.id });
-        setEditorState(null);
     }
 
     function handlePickerInput(input, key) {
@@ -628,64 +453,6 @@ function LayoutEditor({
         setPicker(null);
     }
 
-    function handleColorModeInput(input, key) {
-        if (key.escape) {
-            setColorMode(null);
-            return;
-        }
-
-        if (!selectedColorTarget) {
-            setColorMode(null);
-            return;
-        }
-
-        const currentValue = selectedColorTarget[colorMode.channel] || '';
-
-        if (key.leftArrow || key.rightArrow) {
-            const nextValue = cycleNamedColor(currentValue, key.rightArrow ? 1 : -1);
-            const nextSettings = updateColorTarget(
-                settings,
-                selectedColorTarget.id,
-                colorMode.channel,
-                nextValue
-            );
-            commitSettings(nextSettings, { rowId: selectedRow?.id });
-            return;
-        }
-
-        if (input === 'f' || input === 'F' || key.tab) {
-            setColorMode((previous) => ({
-                channel: previous.channel === 'fg' ? 'bg' : 'fg',
-            }));
-            return;
-        }
-
-        if (input === 'r' || input === 'R') {
-            const nextSettings = clearColorTargetChannel(
-                settings,
-                selectedColorTarget.id,
-                colorMode.channel
-            );
-            commitSettings(nextSettings, { rowId: selectedRow?.id });
-            return;
-        }
-
-        if (input === 'h' || input === 'H') {
-            setEditorState({
-                kind: 'color-hex',
-                buffer: stripLeadingHash(currentValue),
-            });
-            return;
-        }
-
-        if (input === 'a' || input === 'A') {
-            setEditorState({
-                kind: 'color-ansi',
-                buffer: stripAnsiPrefix(currentValue),
-            });
-        }
-    }
-
     function handleLineModeInput(input, key) {
         if (key.escape) {
             onBack();
@@ -726,8 +493,6 @@ function LayoutEditor({
             clearMoveDraft();
             setSelectedRowIndex(0);
             setPicker(null);
-            setEditorState(null);
-            setColorMode(null);
         }
     }
 
@@ -757,8 +522,6 @@ function LayoutEditor({
             setMode(MODE_LINES);
             clearMoveDraft();
             setPicker(null);
-            setEditorState(null);
-            setColorMode(null);
             return;
         }
 
@@ -802,11 +565,6 @@ function LayoutEditor({
             return;
         }
 
-        if (input === 'c' || input === 'C') {
-            openColorModeForRow(selectedRow);
-            return;
-        }
-
         if (input === 'd' || input === 'D') {
             const result = removePromptItem(settings, safeSelectedLineIndex, selectedRow.itemIndex);
             commitSettings(result.settings, {
@@ -816,68 +574,8 @@ function LayoutEditor({
             return;
         }
 
-        if (input === 't' || input === 'T') {
-            if (selectedRow.kind !== 'frame') {
-                return;
-            }
-
-            const nextSettings = togglePromptFrameInvert(
-                settings,
-                safeSelectedLineIndex,
-                selectedRow.itemIndex
-            );
-            commitSettings(nextSettings, { rowId: selectedRow.id });
-            return;
-        }
-
-        if (input === 's' || input === 'S') {
-            if (selectedRow.kind !== 'item') {
-                return;
-            }
-
-            if (selectedRow.item.type === 'styledText') {
-                setEditorState({
-                    kind: 'style',
-                    buffer: selectedRow.item.style || 'none',
-                });
-                return;
-            }
-
-            if (selectedRow.item.type === 'rawText') {
-                const nextSettings = replacePromptItem(
-                    settings,
-                    safeSelectedLineIndex,
-                    selectedRow.itemIndex,
-                    'styledText',
-                    {
-                        text: selectedRow.item.text || '',
-                        style: 'none',
-                    }
-                );
-                commitSettings(nextSettings, { rowId: selectedRow.id });
-                setEditorState({
-                    kind: 'style',
-                    buffer: 'none',
-                });
-            }
-            return;
-        }
-
         if (input === 'e' || input === 'E') {
-            if (selectedRow.kind === 'item') {
-                if (selectedRow.item.type === 'styledText' || selectedRow.item.type === 'rawText') {
-                    setEditorState({
-                        kind: 'text',
-                        buffer: selectedRow.item.text || '',
-                    });
-                }
-                return;
-            }
-
-            setEditorState({
-                kind: 'glyph',
-                buffer: selectedRow.item.glyph || '',
-            });
+            openRowEditor(selectedRow);
         }
     }
 
@@ -918,6 +616,25 @@ function LayoutEditor({
         setMoveDraft(null);
     }
 
+    function openRowEditor(row) {
+        if (!row) {
+            return;
+        }
+
+        if (row.kind === 'item' && row.item.type === 'module') {
+            onEditModule?.(row.item.module, {
+                lineIndex: safeSelectedLineIndex,
+                itemIndex: row.itemIndex,
+            });
+            return;
+        }
+
+        onEditPromptItem?.({
+            lineIndex: safeSelectedLineIndex,
+            itemIndex: row.itemIndex,
+        });
+    }
+
     function openAddPicker() {
         setPicker({
             action: 'add',
@@ -951,39 +668,6 @@ function LayoutEditor({
             selectedModule,
             insertAfterItemIndex: row.itemIndex,
         });
-    }
-
-    function openColorModeForRow(row) {
-        if (!row || row.kind !== 'item') {
-            return;
-        }
-
-        if (row.item.type === 'rawText') {
-            const nextSettings = replacePromptItem(
-                settings,
-                safeSelectedLineIndex,
-                row.itemIndex,
-                'styledText',
-                {
-                    text: row.item.text || '',
-                    style: 'none',
-                }
-            );
-            commitSettings(nextSettings, { rowId: row.id });
-        }
-
-        const targetId =
-            row.item.type === 'module'
-                ? `module:${row.item.module}`
-                : `prompt:${safeSelectedLineIndex}:${row.itemIndex}`;
-
-        if (!colorTargetsById.has(targetId) && row.item.type !== 'rawText') {
-            return;
-        }
-
-        setColorMode({ channel: 'fg' });
-        setEditorState(null);
-        setPicker(null);
     }
 }
 
@@ -1235,72 +919,6 @@ function PickerView({
     );
 }
 
-function ColorModeSummary({ row, channel, colorTarget }) {
-    if (!row || !colorTarget) {
-        return (
-            <Box marginTop={1}>
-                <Text dimColor>The current row does not expose editable colors.</Text>
-            </Box>
-        );
-    }
-
-    return (
-        <Box marginTop={1} flexDirection="column">
-            <Text>
-                Color Mode:{' '}
-                <Text color={channel === 'fg' ? 'green' : 'yellow'}>
-                    {channel === 'fg' ? 'foreground' : 'background'}
-                </Text>
-            </Text>
-            <Text>
-                Current:{' '}
-                <Text
-                    color={colorToInk(colorTarget.fg)}
-                    backgroundColor={colorToInk(colorTarget.bg)}
-                >
-                    {` fg ${displayColorName(colorTarget.fg)} · bg ${displayColorName(colorTarget.bg)} `}
-                </Text>
-                <Text dimColor>{`  ${row.label}`}</Text>
-            </Text>
-        </Box>
-    );
-}
-
-function EditorStateSummary({ editorState }) {
-    if (editorState.kind === 'color-hex') {
-        return (
-            <Box marginTop={1} flexDirection="column">
-                <Text>HEX</Text>
-                <Text>
-                    #{editorState.buffer}
-                    <Text dimColor>{'_'.repeat(Math.max(0, 6 - editorState.buffer.length))}</Text>
-                </Text>
-            </Box>
-        );
-    }
-
-    if (editorState.kind === 'color-ansi') {
-        return (
-            <Box marginTop={1} flexDirection="column">
-                <Text>ANSI 256</Text>
-                <Text>
-                    {editorState.buffer}
-                    <Text dimColor>{'_'.repeat(Math.max(0, 3 - editorState.buffer.length))}</Text>
-                </Text>
-            </Box>
-        );
-    }
-
-    return (
-        <Box marginTop={1}>
-            <Text color="cyan">
-                {editorState.kind}: {editorState.buffer}
-                <Text inverse> </Text>
-            </Text>
-        </Box>
-    );
-}
-
 function InlinePreview({ segments }) {
     const visibleSegments = segments.filter((segment) => Boolean(segment.text));
 
@@ -1390,25 +1008,6 @@ function createFrameRow({ settings, line, item, itemIndex }) {
     };
 }
 
-function buildColorTargetMap(settings) {
-    return new Map(buildColorTargets(settings).map((target) => [target.id, target]));
-}
-
-function resolveSelectedColorTarget(row, colorTargetsById) {
-    if (!row || row.kind !== 'item') {
-        return null;
-    }
-
-    const targetId =
-        row.item.type === 'module'
-            ? `module:${row.item.module}`
-            : row.item.type === 'styledText'
-              ? `prompt:${row.lineIndex}:${row.itemIndex}`
-              : null;
-
-    return targetId ? colorTargetsById.get(targetId) || null : null;
-}
-
 function findLayoutRowIndexById(settings, lineIndex, rowId, fallbackRowIndex = 0) {
     const rows = buildLayoutRows(settings, lineIndex);
     const foundIndex = rows.findIndex((row) => row.id === rowId);
@@ -1469,14 +1068,14 @@ function buildItemDescription(item, itemIndex, moduleDisabled) {
     if (item.type === 'module') {
         return moduleDisabled
             ? `Module slot ${itemIndex + 1}. This module is currently disabled in preview.`
-            : `Module slot ${itemIndex + 1}. Use ←→ to change type or C to edit colors.`;
+            : `Module slot ${itemIndex + 1}. Press E to open the module detail route.`;
     }
 
-    if (item.type === 'styledText') {
-        return `Styled text slot ${itemIndex + 1}. Use E to edit text, S to edit the style string, or C to edit colors.`;
+    if (item.type === 'styledText' || item.type === 'rawText') {
+        return `Text slot ${itemIndex + 1}. Press E to open text, style, and color details.`;
     }
 
-    return `Raw text slot ${itemIndex + 1}. Use E to edit text. S or C will convert it into styled text first.`;
+    return `Text slot ${itemIndex + 1}. Press E to open text, style, and color details.`;
 }
 
 function buildFrameLabel(itemIndex, item) {
@@ -1493,10 +1092,10 @@ function buildFrameMetaText(previousBg, nextBg, invert) {
 
 function buildFrameDescription(itemIndex, previousItem, nextItem) {
     if (previousItem && nextItem) {
-        return `Frame slot ${itemIndex + 1}. It sits between two content segments. Use ←→ to cycle presets, E to type a custom glyph, or T to invert colors.`;
+        return `Frame slot ${itemIndex + 1}. It sits between two content segments. Press E to edit glyph, invert, and linked frame colors.`;
     }
 
-    return `Frame slot ${itemIndex + 1}. It sits on a line edge. Use ←→ to cycle presets, E to type a custom glyph, or T to invert colors.`;
+    return `Frame slot ${itemIndex + 1}. It sits on a line edge. Press E to edit glyph, invert, and linked frame colors.`;
 }
 
 function buildColorSummary(fg, bg) {
@@ -1513,17 +1112,10 @@ function buildRowHelpText(row, moveMode) {
     }
 
     if (row.kind === 'item') {
-        let help = '↑↓ select row  A add  ←→ change type  C color';
-
-        if (row.item.type === 'styledText' || row.item.type === 'rawText') {
-            help += '  E edit text  S style';
-        }
-
-        help += '  Enter move  D delete  ESC lines';
-        return help;
+        return '↑↓ select row  A add  ←→ change type  E open detail  Enter move  D delete  ESC lines';
     }
 
-    return '↑↓ select row  A add  ←→ cycle glyph  E custom glyph  T invert  Enter move  D delete  ESC lines';
+    return '↑↓ select row  A add  ←→ cycle glyph  E open detail  Enter move  D delete  ESC lines';
 }
 
 function buildPreviewSettings(settings, lineIndex, lineItems) {
@@ -1707,38 +1299,6 @@ function findNextContentItem(line, startIndex) {
     }
 
     return null;
-}
-
-function stripLeadingHash(value) {
-    if (!value) {
-        return '';
-    }
-
-    if (value.startsWith('#')) {
-        return value.slice(1).toUpperCase();
-    }
-
-    if (value.startsWith('hex:')) {
-        return value.slice('hex:'.length).toUpperCase();
-    }
-
-    return '';
-}
-
-function stripAnsiPrefix(value) {
-    if (!value) {
-        return '';
-    }
-
-    if (value.startsWith('ansi256:')) {
-        return value.slice('ansi256:'.length);
-    }
-
-    if (/^\d+$/.test(value)) {
-        return value;
-    }
-
-    return '';
 }
 
 function printableText(text) {

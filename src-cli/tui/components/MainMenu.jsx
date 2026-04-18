@@ -6,7 +6,7 @@ const MENU_ITEMS = [
     {
         key: 'layout',
         label: 'Prompt Layout',
-        detail: 'Edit content, frame, and colors together.',
+        detail: 'Edit structure and jump into slot detail routes.',
     },
     { key: 'modules', label: 'Modules', detail: 'Module fields and nested maps.' },
     { key: 'save', label: 'Save', detail: 'Write starship.toml.' },
