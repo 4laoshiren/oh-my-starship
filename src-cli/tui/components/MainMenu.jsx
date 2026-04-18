@@ -8,7 +8,6 @@ const MENU_ITEMS = [
         label: 'Prompt Layout',
         detail: 'Edit structure and jump into slot detail routes.',
     },
-    { key: 'modules', label: 'Modules', detail: 'Module fields and nested maps.' },
     { key: 'save', label: 'Save', detail: 'Write starship.toml.' },
     { key: 'reload', label: 'Reload', detail: 'Reload current config.' },
     { key: 'exit', label: 'Exit', detail: 'Leave the TUI.' },

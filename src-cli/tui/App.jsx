@@ -7,14 +7,12 @@ import { LayoutEditor } from './components/PromptItemsEditor.jsx';
 import { MainMenu } from './components/MainMenu.jsx';
 import { MapEditor } from './components/MapEditor.jsx';
 import { ModuleEditor } from './components/ModuleEditor.jsx';
-import { ModuleList } from './components/ModuleList.jsx';
 import { PromptItemEditor } from './components/PromptItemEditor.jsx';
 import { StatusPreview } from './components/StatusPreview.jsx';
 
 const SCREENS = {
     MAIN: 'main',
     LAYOUT: 'layout',
-    MODULES: 'modules',
     MODULE_EDITOR: 'module-editor',
     MAP_EDITOR: 'map-editor',
     PROMPT_ITEM_EDITOR: 'prompt-item-editor',
@@ -28,7 +26,6 @@ function App() {
     const [screen, setScreen] = useState(SCREENS.MAIN);
     const [selectedModule, setSelectedModule] = useState('hostname');
     const [selectedMapField, setSelectedMapField] = useState(null);
-    const [moduleEditorOrigin, setModuleEditorOrigin] = useState(SCREENS.MODULES);
     const [layoutSelection, setLayoutSelection] = useState({
         mode: 'lines',
         lineIndex: 0,
@@ -108,10 +105,6 @@ function App() {
             setScreen(SCREENS.LAYOUT);
             return;
         }
-        if (action === 'modules') {
-            setScreen(SCREENS.MODULES);
-            return;
-        }
         if (action === 'save') {
             saveCurrentSettings();
             return;
@@ -125,13 +118,12 @@ function App() {
         }
     }
 
-    function openModuleEditor(moduleKey, origin = SCREENS.MODULES) {
+    function openModuleEditor(moduleKey) {
         if (!moduleKey) {
             return;
         }
 
         setSelectedModule(moduleKey);
-        setModuleEditorOrigin(origin);
         setScreen(SCREENS.MODULE_EDITOR);
     }
 
@@ -152,25 +144,11 @@ function App() {
                     onPreviewChange={updatePreviewState}
                     initialSelection={layoutSelection}
                     onSelectionChange={setLayoutSelection}
-                    onEditModule={(moduleKey) => openModuleEditor(moduleKey, SCREENS.LAYOUT)}
+                    onEditModule={openModuleEditor}
                     onEditPromptItem={({ lineIndex, itemIndex }) =>
                         openPromptItemEditor(lineIndex, itemIndex)
                     }
                     onBack={() => setScreen(SCREENS.MAIN)}
-                    interactive={interactive}
-                    terminalHeight={terminalHeight}
-                />
-            );
-        }
-
-        if (screen === SCREENS.MODULES) {
-            return (
-                <ModuleList
-                    settings={settings}
-                    onBack={() => setScreen(SCREENS.MAIN)}
-                    onSelect={(moduleKey) => {
-                        openModuleEditor(moduleKey, SCREENS.MODULES);
-                    }}
                     interactive={interactive}
                     terminalHeight={terminalHeight}
                 />
@@ -182,7 +160,7 @@ function App() {
                 <ModuleEditor
                     settings={settings}
                     moduleKey={selectedModule}
-                    onBack={() => setScreen(moduleEditorOrigin)}
+                    onBack={() => setScreen(SCREENS.LAYOUT)}
                     onChange={updateSettings}
                     onOpenMap={(moduleKey, fieldKey) => {
                         setSelectedModule(moduleKey);
