@@ -14,7 +14,7 @@ import {
 } from '../../utils/settings-mutations.js';
 import { parseStyle, resolvePromptItemBackground } from '../../utils/prompt-format.js';
 import { resolveModuleColors } from '../../utils/color-targets.js';
-import { colorToInk, displayColorName } from '../../utils/colors.js';
+import { colorToInk } from '../../utils/colors.js';
 
 const MODE_LINES = 'lines';
 const MODE_ROWS = 'rows';
@@ -580,7 +580,7 @@ function LayoutRow({ row, selected, moveMode }) {
                     {row.label.padEnd(24)}
                 </Text>
             </Box>
-            <Box flexShrink={1} marginRight={row.metaText ? 1 : 0}>
+            <Box flexShrink={1}>
                 <InlinePreview
                     segments={[
                         {
@@ -592,13 +592,6 @@ function LayoutRow({ row, selected, moveMode }) {
                     ]}
                 />
             </Box>
-            {row.metaText ? (
-                <Box flexGrow={1} flexShrink={1}>
-                    <Text dimColor wrap="truncate-end">
-                        {row.metaText}
-                    </Text>
-                </Box>
-            ) : null}
         </Box>
     );
 }
@@ -722,7 +715,6 @@ function createItemRow({ settings, lineIndex, itemIndex, item }) {
         previewFg,
         previewBg,
         previewDim: moduleDisabled,
-        metaText: buildItemMetaText(item, moduleDisabled, previewFg, previewBg),
         description: buildItemDescription(item, itemIndex, moduleDisabled),
     };
 }
@@ -745,7 +737,6 @@ function createFrameRow({ settings, line, item, itemIndex }) {
         previewFg,
         previewBg,
         previewDim: false,
-        metaText: buildFrameMetaText(previousBg, nextBg, item.invert),
         description: buildFrameDescription(itemIndex, previousItem, nextItem),
     };
 }
@@ -776,14 +767,10 @@ function buildItemLabel(itemIndex, item) {
     const slot = String(itemIndex + 1).padStart(2, '0');
 
     if (item.type === 'module') {
-        return `${slot}  Module  $${item.module}`;
+        return `${slot}  $${item.module}`;
     }
 
-    if (item.type === 'styledText') {
-        return `${slot}  Text    "${truncateText(printableText(item.text), 18)}"`;
-    }
-
-    return `${slot}  Raw     "${truncateText(printableText(item.text), 18)}"`;
+    return `${slot}  "${truncateText(printableText(item.text), 18)}"`;
 }
 
 function buildItemPreviewText(item) {
@@ -792,18 +779,6 @@ function buildItemPreviewText(item) {
     }
 
     return truncateText(item.text || ' ', 20);
-}
-
-function buildItemMetaText(item, moduleDisabled, fg, bg) {
-    if (moduleDisabled) {
-        return 'disabled in preview';
-    }
-
-    if (item.type === 'rawText') {
-        return 'plain text';
-    }
-
-    return buildColorSummary(fg, bg);
 }
 
 function buildItemDescription(item, itemIndex, moduleDisabled) {
@@ -822,14 +797,7 @@ function buildItemDescription(item, itemIndex, moduleDisabled) {
 
 function buildFrameLabel(itemIndex, item) {
     const slot = String(itemIndex + 1).padStart(2, '0');
-    return `${slot}  Frame   "${truncateText(formatVisibleGlyph(item.glyph), 18)}"`;
-}
-
-function buildFrameMetaText(previousBg, nextBg, invert) {
-    const left = previousBg ? displayColorName(previousBg) : '(edge)';
-    const right = nextBg ? displayColorName(nextBg) : '(edge)';
-    const mode = invert ? 'invert' : 'normal';
-    return `Left ${left} · Right ${right} · ${mode}`;
+    return `${slot}  "${truncateText(formatVisibleGlyph(item.glyph), 18)}"`;
 }
 
 function buildFrameDescription(itemIndex, previousItem, nextItem) {
@@ -838,10 +806,6 @@ function buildFrameDescription(itemIndex, previousItem, nextItem) {
     }
 
     return `Frame slot ${itemIndex + 1}. It sits on a line edge. Press E to edit glyph, invert, and linked frame colors.`;
-}
-
-function buildColorSummary(fg, bg) {
-    return `FG ${displayColorName(fg)} · BG ${displayColorName(bg)}`;
 }
 
 function buildRowHelpText(row, moveMode) {
