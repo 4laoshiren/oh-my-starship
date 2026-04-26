@@ -70,7 +70,7 @@ function PresetsMenu({
 
         onPreviewChange({
             settings: selectedPreset.settings,
-            fastMode: shouldUseFastPreview(selectedPreset.settings),
+            fastMode: true,
         });
     }, [onPreviewChange, selectedPreset]);
 
@@ -233,16 +233,6 @@ function clamp(value, min, max) {
     }
 
     return Math.max(min, Math.min(value, max));
-}
-
-function shouldUseFastPreview(settings) {
-    const sourceFormat = settings?.prompt?.sourceFormat;
-
-    if (sourceFormat === null) {
-        return false;
-    }
-
-    return typeof sourceFormat !== 'string' || !sourceFormat.includes('$all');
 }
 
 export { PresetsMenu };
