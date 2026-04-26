@@ -13,9 +13,12 @@ import {
 import { settingsToToml } from './settings-service.js';
 
 const MODULE_SAMPLES = {
+    os: ' 󰍲 ',
+    username: ` ${resolveUsernameSample()} `,
     hostname: ' LAPTOP-D84SE2MG ',
     directory: ' …\\oh-my-starship ',
     git_branch: '  react-ink ',
+    git_state: ' REBASING ',
     git_status: '! ',
     nodejs: '  v24.11.0 ',
     python: '  v3.14.0 ',
@@ -23,9 +26,23 @@ const MODULE_SAMPLES = {
     golang: '  1.25.0 ',
     php: '  8.4.0 ',
     java: '  24 ',
+    kotlin: '  2.2.0 ',
+    elixir: '  1.18.0 ',
+    elm: '  0.19.1 ',
+    gradle: '  8.14 ',
+    haskell: '  9.10.1 ',
+    julia: '  1.12.0 ',
+    nim: ' 󰆥 2.2.4 ',
+    scala: '  3.7.0 ',
     ruby: '  3.4.0 ',
     c: '  clang ',
+    cpp: '  clang++ ',
     swift: ' \ue755 6.0 ',
+    docker_context: '  docker-desktop ',
+    conda: '  base ',
+    pixi: ' 󰏗 dev ',
+    cmd_duration: ' ⏱ 12ms ',
+    line_break: '',
     time: '  Saturday 04-11 12:16 ',
     character: '👻👻',
 };
@@ -111,7 +128,7 @@ function buildFastPreviewLine(line, settings) {
 
             const colors = resolveModuleColors(moduleConfig);
             segments.push({
-                text: MODULE_SAMPLES[item.module] || `$${item.module}`,
+                text: resolveModuleSample(item.module),
                 color: colorToInk(colors.fg),
                 backgroundColor: colorToInk(colors.bg),
                 bold: false,
@@ -151,4 +168,20 @@ function createEmptyStyle() {
         flags: [],
         unknown: [],
     };
+}
+
+function resolveUsernameSample() {
+    try {
+        return os.userInfo().username || 'user';
+    } catch {
+        return 'user';
+    }
+}
+
+function resolveModuleSample(moduleKey) {
+    if (Object.prototype.hasOwnProperty.call(MODULE_SAMPLES, moduleKey)) {
+        return MODULE_SAMPLES[moduleKey];
+    }
+
+    return `$${moduleKey}`;
 }

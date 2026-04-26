@@ -319,29 +319,26 @@ function createDefaultPromptLines() {
 }
 
 function normalizePrompt(prompt, fallbackLines, legacyPowerline) {
+    const sourceFormat = resolvePromptSourceFormat(prompt);
+
     if (isRecord(prompt) && Array.isArray(prompt.lines)) {
         if (shouldMigrateLegacyPowerline(prompt.lines, legacyPowerline)) {
-            return {
-                lines: normalizePromptLines(
+            return createPromptState(
+                normalizePromptLines(
                     convertLegacyPowerlineLinesToExplicitFrames(prompt.lines, legacyPowerline)
                 ),
-            };
+                sourceFormat
+            );
         }
 
-        return {
-            lines: normalizePromptLines(prompt.lines),
-        };
+        return createPromptState(normalizePromptLines(prompt.lines), sourceFormat);
     }
 
     if (isRecord(prompt) && Array.isArray(prompt.tokens)) {
-        return {
-            lines: normalizePromptLines(convertLegacyTokensToLines(prompt.tokens)),
-        };
+        return createPromptState(normalizePromptLines(convertLegacyTokensToLines(prompt.tokens)));
     }
 
-    return {
-        lines: normalizePromptLines(fallbackLines),
-    };
+    return createPromptState(normalizePromptLines(fallbackLines));
 }
 
 function normalizePromptLines(lines) {
@@ -412,7 +409,7 @@ function normalizePromptItem(item) {
 }
 
 function normalizeModules(modules) {
-    const next = structuredClone(DEFAULT_MODULES);
+    const next = {};
     if (!isRecord(modules)) {
         return next;
     }
@@ -422,7 +419,6 @@ function normalizeModules(modules) {
             continue;
         }
         next[moduleKey] = {
-            ...(next[moduleKey] || {}),
             ...moduleConfig,
         };
     }
@@ -584,4 +580,27 @@ function isLegacyFrameToken(token) {
 
 function isRecord(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function createPromptState(lines, sourceFormat) {
+    if (sourceFormat === undefined) {
+        return { lines };
+    }
+
+    return {
+        lines,
+        sourceFormat,
+    };
+}
+
+function resolvePromptSourceFormat(prompt) {
+    if (!isRecord(prompt) || !('sourceFormat' in prompt)) {
+        return undefined;
+    }
+
+    if (prompt.sourceFormat === null) {
+        return null;
+    }
+
+    return typeof prompt.sourceFormat === 'string' ? prompt.sourceFormat : undefined;
 }

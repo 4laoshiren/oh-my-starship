@@ -7,12 +7,14 @@ import { LayoutEditor } from './components/PromptItemsEditor.jsx';
 import { MainMenu } from './components/MainMenu.jsx';
 import { MapEditor } from './components/MapEditor.jsx';
 import { ModuleEditor } from './components/ModuleEditor.jsx';
+import { PresetsMenu } from './components/PresetsMenu.jsx';
 import { PromptItemEditor } from './components/PromptItemEditor.jsx';
 import { StatusPreview } from './components/StatusPreview.jsx';
 
 const SCREENS = {
     MAIN: 'main',
     LAYOUT: 'layout',
+    PRESETS: 'presets',
     MODULE_EDITOR: 'module-editor',
     MAP_EDITOR: 'map-editor',
     PROMPT_ITEM_EDITOR: 'prompt-item-editor',
@@ -24,6 +26,8 @@ function App() {
     const [previewState, setPreviewState] = useState(null);
     const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(settings));
     const [screen, setScreen] = useState(SCREENS.MAIN);
+    const [mainSelection, setMainSelection] = useState(0);
+    const [presetSelection, setPresetSelection] = useState(0);
     const [selectedModule, setSelectedModule] = useState('hostname');
     const [selectedMapField, setSelectedMapField] = useState(null);
     const [layoutSelection, setLayoutSelection] = useState({
@@ -102,7 +106,13 @@ function App() {
 
     function handleMainSelect(action) {
         if (action === 'layout') {
+            setMainSelection(0);
             setScreen(SCREENS.LAYOUT);
+            return;
+        }
+        if (action === 'presets') {
+            setMainSelection(1);
+            setScreen(SCREENS.PRESETS);
             return;
         }
         if (action === 'save') {
@@ -135,6 +145,15 @@ function App() {
         setScreen(SCREENS.PROMPT_ITEM_EDITOR);
     }
 
+    function applyPresetSettings(nextSettings, preset) {
+        setSettings(nextSettings);
+        setPreviewState(null);
+        setFlash({
+            color: 'yellow',
+            text: `Applied preset: ${preset?.name || 'custom preset'}. Save with Ctrl+S.`,
+        });
+    }
+
     function renderScreen() {
         if (screen === SCREENS.LAYOUT) {
             return (
@@ -148,6 +167,20 @@ function App() {
                     onEditPromptItem={({ lineIndex, itemIndex }) =>
                         openPromptItemEditor(lineIndex, itemIndex)
                     }
+                    onBack={() => setScreen(SCREENS.MAIN)}
+                    interactive={interactive}
+                    terminalHeight={terminalHeight}
+                />
+            );
+        }
+
+        if (screen === SCREENS.PRESETS) {
+            return (
+                <PresetsMenu
+                    initialSelection={presetSelection}
+                    onSelectionChange={setPresetSelection}
+                    onPreviewChange={updatePreviewState}
+                    onApply={applyPresetSettings}
                     onBack={() => setScreen(SCREENS.MAIN)}
                     interactive={interactive}
                     terminalHeight={terminalHeight}
@@ -201,7 +234,15 @@ function App() {
             );
         }
 
-        return <MainMenu dirty={dirty} onSelect={handleMainSelect} interactive={interactive} />;
+        return (
+            <MainMenu
+                dirty={dirty}
+                initialSelection={mainSelection}
+                onSelectionChange={setMainSelection}
+                onSelect={handleMainSelect}
+                interactive={interactive}
+            />
+        );
     }
 
     return (

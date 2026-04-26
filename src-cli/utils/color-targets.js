@@ -1,5 +1,5 @@
 import { normalizeSettings } from '../types/settings.js';
-import { parseStyle, stringifyStyle } from './prompt-format.js';
+import { parseStyle, resolveModuleStyle, stringifyStyle } from './prompt-format.js';
 
 export function buildColorTargets(settings) {
     const targets = [];
@@ -71,6 +71,7 @@ export function updateColorTarget(settings, targetId, channel, value) {
         }
 
         item.style = patchStyleColor(item.style, channel, value);
+        markPromptFormatDirty(next);
         return normalizeSettings(next);
     }
 
@@ -93,7 +94,7 @@ export function clearColorTargetChannel(settings, targetId, channel) {
 }
 
 export function resolveModuleColors(moduleConfig) {
-    const outerStyle = parseStyle(moduleConfig.style || 'none');
+    const outerStyle = resolveModuleStyle(moduleConfig);
     const inlineStyle = extractEditableFormatStyle(moduleConfig.format || '');
 
     return {
@@ -106,6 +107,11 @@ function patchModuleColor(moduleConfig, channel, value) {
     const nextConfig = {
         ...moduleConfig,
     };
+
+    if (usesUsernameVariantStyles(nextConfig)) {
+        return patchUsernameVariantColor(nextConfig, channel, value);
+    }
+
     const nextOuterStyle = parseStyle(nextConfig.style || 'none');
     const editableStyle = extractEditableFormatStyle(nextConfig.format || '');
 
@@ -160,6 +166,25 @@ function patchStyleColor(style, channel, value) {
     return stringifyStyle(parsed);
 }
 
+function patchUsernameVariantColor(moduleConfig, channel, value) {
+    const nextConfig = {
+        ...moduleConfig,
+    };
+    const activeStyle = resolveModuleStyle(nextConfig);
+    activeStyle[channel] = value;
+    const nextStyleText = stringifyStyle(activeStyle);
+
+    if (typeof nextConfig.style_user === 'string') {
+        nextConfig.style_user = nextStyleText;
+    }
+
+    if (typeof nextConfig.style_root === 'string') {
+        nextConfig.style_root = nextStyleText;
+    }
+
+    return nextConfig;
+}
+
 function replaceSlice(value, start, end, replacement) {
     return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
 }
@@ -194,4 +219,19 @@ function shortenText(value) {
     }
 
     return `"${text.slice(0, 21)}..."`;
+}
+
+function usesUsernameVariantStyles(moduleConfig) {
+    return Boolean(
+        moduleConfig &&
+        (typeof moduleConfig.style_user === 'string' || typeof moduleConfig.style_root === 'string')
+    );
+}
+
+function markPromptFormatDirty(settings) {
+    if (!settings?.prompt) {
+        return;
+    }
+
+    delete settings.prompt.sourceFormat;
 }

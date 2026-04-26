@@ -11,6 +11,7 @@ export function addPromptLine(settings, insertAfterLineIndex) {
     const insertIndex = clamp(insertAfterLineIndex + 1, 0, next.prompt.lines.length);
 
     next.prompt.lines.splice(insertIndex, 0, []);
+    markPromptFormatDirty(next);
     return {
         settings: normalizeSettings(next),
         lineIndex: insertIndex,
@@ -21,6 +22,7 @@ export function removePromptLine(settings, lineIndex) {
     const next = cloneSettings(settings);
     if (next.prompt.lines.length <= 1) {
         next.prompt.lines[0] = [];
+        markPromptFormatDirty(next);
         return {
             settings: normalizeSettings(next),
             lineIndex: 0,
@@ -29,6 +31,7 @@ export function removePromptLine(settings, lineIndex) {
 
     const safeIndex = clamp(lineIndex, 0, next.prompt.lines.length - 1);
     next.prompt.lines.splice(safeIndex, 1);
+    markPromptFormatDirty(next);
     return {
         settings: normalizeSettings(next),
         lineIndex: clamp(safeIndex, 0, next.prompt.lines.length - 1),
@@ -43,6 +46,7 @@ export function addPromptItem(settings, lineIndex, insertAfterIndex, type) {
 
     line.splice(insertIndex, 0, item);
     next.prompt.lines[lineIndex] = line;
+    markPromptFormatDirty(next);
 
     return {
         settings: normalizeSettings(next),
@@ -63,6 +67,7 @@ export function removePromptItem(settings, lineIndex, itemIndex) {
     const safeIndex = clamp(itemIndex, 0, line.length - 1);
     line.splice(safeIndex, 1);
     next.prompt.lines[lineIndex] = line;
+    markPromptFormatDirty(next);
 
     return {
         settings: normalizeSettings(next),
@@ -86,6 +91,7 @@ export function movePromptItem(settings, lineIndex, itemIndex, step) {
     const [item] = line.splice(safeIndex, 1);
     line.splice(nextIndex, 0, item);
     next.prompt.lines[lineIndex] = line;
+    markPromptFormatDirty(next);
 
     return {
         settings: normalizeSettings(next),
@@ -98,6 +104,7 @@ export function replacePromptLine(settings, lineIndex, lineItems) {
     next.prompt.lines[lineIndex] = Array.isArray(lineItems)
         ? JSON.parse(JSON.stringify(lineItems))
         : [];
+    markPromptFormatDirty(next);
 
     return normalizeSettings(next);
 }
@@ -110,6 +117,7 @@ export function cyclePromptModule(settings, lineIndex, itemIndex, step) {
     }
 
     item.module = normalizeModuleIndex(item.module, step);
+    markPromptFormatDirty(next);
     return normalizeSettings(next);
 }
 
@@ -121,6 +129,7 @@ export function updatePromptItem(settings, lineIndex, itemIndex, patch) {
     }
 
     Object.assign(item, patch);
+    markPromptFormatDirty(next);
     return normalizeSettings(next);
 }
 
@@ -138,6 +147,7 @@ export function replacePromptItem(settings, lineIndex, itemIndex, type, patch = 
 
     line[itemIndex] = nextItem;
     next.prompt.lines[lineIndex] = line;
+    markPromptFormatDirty(next);
 
     return normalizeSettings(next);
 }
@@ -150,6 +160,7 @@ export function togglePromptFrameInvert(settings, lineIndex, itemIndex) {
     }
 
     item.invert = !Boolean(item.invert);
+    markPromptFormatDirty(next);
     return normalizeSettings(next);
 }
 
@@ -167,6 +178,7 @@ export function cyclePromptFrameGlyph(settings, lineIndex, itemIndex, step) {
         SEPARATOR_PRESETS[normalizeCircularIndex(startIndex + step, SEPARATOR_PRESETS.length)] ||
         SEPARATOR_PRESETS[0] ||
         '';
+    markPromptFormatDirty(next);
 
     return normalizeSettings(next);
 }
@@ -249,6 +261,14 @@ function createDefaultPromptItem(type) {
 
 function cloneSettings(settings) {
     return JSON.parse(JSON.stringify(settings));
+}
+
+function markPromptFormatDirty(settings) {
+    if (!settings?.prompt) {
+        return;
+    }
+
+    delete settings.prompt.sourceFormat;
 }
 
 function clamp(value, min, max) {

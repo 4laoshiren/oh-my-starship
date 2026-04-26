@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
 
@@ -8,14 +8,29 @@ const MENU_ITEMS = [
         label: 'Prompt Layout',
         detail: 'Edit structure and jump into slot detail routes.',
     },
+    {
+        key: 'presets',
+        label: 'Presets',
+        detail: 'Browse bundled prompt presets and apply one.',
+    },
     { key: 'save', label: 'Save', detail: 'Write starship.toml.' },
     { key: 'reload', label: 'Reload', detail: 'Reload current config.' },
     { key: 'exit', label: 'Exit', detail: 'Leave the TUI.' },
 ];
 
-function MainMenu({ dirty, onSelect, interactive }) {
-    const [selectedIndex, setSelectedIndex] = useState(0);
+function MainMenu({ dirty, initialSelection = 0, onSelectionChange, onSelect, interactive }) {
     const items = useMemo(() => MENU_ITEMS, []);
+    const [selectedIndex, setSelectedIndex] = useState(() =>
+        clampIndex(initialSelection, items.length)
+    );
+
+    useEffect(() => {
+        setSelectedIndex(clampIndex(initialSelection, items.length));
+    }, [initialSelection, items.length]);
+
+    useEffect(() => {
+        onSelectionChange?.(selectedIndex);
+    }, [onSelectionChange, selectedIndex]);
 
     useInput(
         (input, key) => {
@@ -36,6 +51,11 @@ function MainMenu({ dirty, onSelect, interactive }) {
 
             if (input === 's' || input === 'S') {
                 onSelect('save');
+                return;
+            }
+
+            if (input === 'p' || input === 'P') {
+                onSelect('presets');
             }
         },
         { isActive: interactive }
@@ -52,7 +72,7 @@ function MainMenu({ dirty, onSelect, interactive }) {
             <Text dimColor>
                 {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
             </Text>
-            <Text dimColor>↑↓ move Enter open S quick save</Text>
+            <Text dimColor>↑↓ move Enter open S quick save P presets</Text>
             <Box marginTop={1} flexDirection="column">
                 {items.map((item, index) => {
                     const selected = index === selectedIndex;
@@ -75,6 +95,18 @@ function normalizeCircularIndex(index, length) {
     }
 
     return ((index % length) + length) % length;
+}
+
+function clampIndex(index, length) {
+    if (length <= 0) {
+        return 0;
+    }
+
+    if (!Number.isInteger(index)) {
+        return 0;
+    }
+
+    return Math.max(0, Math.min(index, length - 1));
 }
 
 export { MainMenu };

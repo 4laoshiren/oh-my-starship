@@ -140,6 +140,20 @@ export function normalizeModuleIndex(module, step) {
     return MODULE_ORDER[normalizeCircularIndex(start + step, MODULE_ORDER.length)];
 }
 
+export function resolveModuleStyle(moduleConfig = {}) {
+    const directStyle = typeof moduleConfig.style === 'string' ? moduleConfig.style : '';
+    if (directStyle.trim()) {
+        return parseStyle(directStyle);
+    }
+
+    const usernameStyle = selectUsernameStyle(moduleConfig);
+    if (usernameStyle.trim()) {
+        return parseStyle(usernameStyle);
+    }
+
+    return parseStyle('none');
+}
+
 export function resolvePromptItemBackground(item, modules = {}) {
     if (!item) {
         return '';
@@ -147,7 +161,7 @@ export function resolvePromptItemBackground(item, modules = {}) {
 
     if (item.type === 'module') {
         const moduleConfig = modules[item.module] || {};
-        return parseStyle(moduleConfig.style || '').bg || '';
+        return resolveModuleStyle(moduleConfig).bg || '';
     }
 
     if (item.type === 'styledText') {
@@ -226,7 +240,7 @@ function buildPreviewLine(line, settings, samples) {
         if (item.type === 'module') {
             const moduleConfig = settings.modules[item.module];
             if (!moduleConfig?.disabled) {
-                parts.push(samples[item.module] || `$${item.module}`);
+                parts.push(resolvePreviewSample(samples, item.module));
             }
             continue;
         }
@@ -390,7 +404,7 @@ function resolveTokenBackground(token, modules) {
 
     if (token.type === 'module') {
         const moduleConfig = modules[token.module] || {};
-        return parseStyle(moduleConfig.style || '').bg || '';
+        return resolveModuleStyle(moduleConfig).bg || '';
     }
 
     if (token.type === 'styledText') {
@@ -505,4 +519,22 @@ function combineAdjacentRawText(tokens) {
 
 function printableText(text) {
     return String(text).replaceAll('\n', '\\n');
+}
+
+function resolvePreviewSample(samples, moduleKey) {
+    if (Object.prototype.hasOwnProperty.call(samples, moduleKey)) {
+        return samples[moduleKey];
+    }
+
+    return `$${moduleKey}`;
+}
+
+function selectUsernameStyle(moduleConfig) {
+    const preferredUserStyle =
+        typeof moduleConfig.style_user === 'string' ? moduleConfig.style_user : '';
+    if (preferredUserStyle) {
+        return preferredUserStyle;
+    }
+
+    return typeof moduleConfig.style_root === 'string' ? moduleConfig.style_root : '';
 }
