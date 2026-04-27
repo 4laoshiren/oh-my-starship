@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
+
+const MAIN_MENU_TITLES = ['Main Menu'];
 
 const MENU_ITEMS = [
     {
@@ -20,37 +22,59 @@ const MENU_ITEMS = [
 
 function MainMenu({ dirty, initialSelection = 0, onSelectionChange, onSelect, interactive }) {
     const items = useMemo(() => MENU_ITEMS, []);
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    const onSelectRef = useRef(onSelect);
+    const selectedIndexRef = useRef(clampIndex(initialSelection, items.length));
     const [selectedIndex, setSelectedIndex] = useState(() =>
         clampIndex(initialSelection, items.length)
     );
+    const activeSelectedIndex = clampIndex(selectedIndex, items.length);
 
-    useEffect(() => {
-        setSelectedIndex(clampIndex(initialSelection, items.length));
-    }, [initialSelection, items.length]);
+    onSelectionChangeRef.current = onSelectionChange;
+    onSelectRef.current = onSelect;
+    selectedIndexRef.current = activeSelectedIndex;
 
-    useEffect(() => {
-        onSelectionChange?.(selectedIndex);
-    }, [onSelectionChange, selectedIndex]);
+    const moveSelection = useCallback(
+        (step) => {
+            const currentIndex = selectedIndexRef.current;
+            const nextIndex = normalizeCircularIndex(currentIndex + step, items.length);
 
-    useInput(
+            if (nextIndex === currentIndex) {
+                return;
+            }
+
+            selectedIndexRef.current = nextIndex;
+            setSelectedIndex(nextIndex);
+        },
+        [items.length]
+    );
+
+    const cacheSelection = useCallback(() => {
+        onSelectionChangeRef.current?.(selectedIndexRef.current);
+    }, []);
+
+    const handleInput = useCallback(
         (input, key) => {
             if (key.upArrow) {
-                setSelectedIndex((previous) => normalizeCircularIndex(previous - 1, items.length));
+                moveSelection(-1);
                 return;
             }
 
             if (key.downArrow) {
-                setSelectedIndex((previous) => normalizeCircularIndex(previous + 1, items.length));
+                moveSelection(1);
                 return;
             }
 
             if (key.return) {
-                onSelect(items[selectedIndex]?.key);
+                cacheSelection();
+                onSelectRef.current?.(items[selectedIndexRef.current]?.key);
                 return;
             }
         },
-        { isActive: interactive }
+        [cacheSelection, items, moveSelection]
     );
+
+    useInput(handleInput, { isActive: interactive });
 
     return (
         <TitledBox
@@ -58,14 +82,14 @@ function MainMenu({ dirty, initialSelection = 0, onSelectionChange, onSelect, in
             borderStyle="round"
             borderColor="green"
             paddingX={1}
-            titles={['Main Menu']}
+            titles={MAIN_MENU_TITLES}
         >
             <Text dimColor>
                 {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
             </Text>
             <Box marginTop={1} flexDirection="column">
                 {items.map((item, index) => {
-                    const selected = index === selectedIndex;
+                    const selected = index === activeSelectedIndex;
                     return (
                         <Text key={item.key} color={selected ? 'green' : undefined}>
                             {selected ? '▶ ' : '  '}
