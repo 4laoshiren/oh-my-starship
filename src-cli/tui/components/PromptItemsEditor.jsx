@@ -710,7 +710,7 @@ function createItemRow({ settings, lineIndex, itemIndex, item }) {
         lineIndex,
         itemIndex,
         item,
-        label: buildItemLabel(itemIndex, item),
+        label: buildItemLabel(item),
         previewText: buildItemPreviewText(item),
         previewFg,
         previewBg,
@@ -732,7 +732,7 @@ function createFrameRow({ settings, line, item, itemIndex }) {
         kind: 'frame',
         itemIndex,
         item,
-        label: buildFrameLabel(itemIndex, item),
+        label: buildFrameLabel(item),
         previewText: formatVisibleGlyph(item.glyph || ''),
         previewFg,
         previewBg,
@@ -763,14 +763,12 @@ function findLayoutRowIndexByItemIndex(settings, lineIndex, itemIndex) {
     return clamp(itemIndex, 0, Math.max(0, rows.length - 1));
 }
 
-function buildItemLabel(itemIndex, item) {
-    const slot = String(itemIndex + 1).padStart(2, '0');
-
+function buildItemLabel(item) {
     if (item.type === 'module') {
-        return `${slot}  $${item.module}`;
+        return `$${item.module}`;
     }
 
-    return `${slot}  "${truncateText(printableText(item.text), 18)}"`;
+    return `"${truncateText(printableText(item.text), 18)}"`;
 }
 
 function buildItemPreviewText(item) {
@@ -795,9 +793,8 @@ function buildItemDescription(item, itemIndex, moduleDisabled) {
     return `Text slot ${itemIndex + 1}. Press E to open text, style, and color details.`;
 }
 
-function buildFrameLabel(itemIndex, item) {
-    const slot = String(itemIndex + 1).padStart(2, '0');
-    return `${slot}  "${truncateText(formatVisibleGlyph(item.glyph), 18)}"`;
+function buildFrameLabel(item) {
+    return `"${truncateText(formatVisibleGlyph(item.glyph), 18)}"`;
 }
 
 function buildFrameDescription(itemIndex, previousItem, nextItem) {
