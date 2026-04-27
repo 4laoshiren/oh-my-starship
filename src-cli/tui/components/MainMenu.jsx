@@ -48,15 +48,6 @@ function MainMenu({ dirty, initialSelection = 0, onSelectionChange, onSelect, in
                 onSelect(items[selectedIndex]?.key);
                 return;
             }
-
-            if (input === 's' || input === 'S') {
-                onSelect('save');
-                return;
-            }
-
-            if (input === 'p' || input === 'P') {
-                onSelect('presets');
-            }
         },
         { isActive: interactive }
     );
@@ -72,7 +63,6 @@ function MainMenu({ dirty, initialSelection = 0, onSelectionChange, onSelect, in
             <Text dimColor>
                 {dirty ? 'Unsaved changes are waiting.' : 'Everything is in sync.'}
             </Text>
-            <Text dimColor>↑↓ move Enter open S quick save P presets</Text>
             <Box marginTop={1} flexDirection="column">
                 {items.map((item, index) => {
                     const selected = index === selectedIndex;
