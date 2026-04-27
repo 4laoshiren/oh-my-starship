@@ -109,16 +109,11 @@ function LayoutEditor({
             return;
         }
 
-        if (!moveMode) {
-            onPreviewChange(null);
-            return;
-        }
-
         onPreviewChange({
             settings: buildPreviewSettings(settings, safeSelectedLineIndex, activeLineItems),
             fastMode: true,
         });
-    }, [activeLineItems, moveMode, onPreviewChange, safeSelectedLineIndex, settings]);
+    }, [activeLineItems, onPreviewChange, safeSelectedLineIndex, settings]);
 
     useEffect(() => {
         if (!onPreviewChange) {
