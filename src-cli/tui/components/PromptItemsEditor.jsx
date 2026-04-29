@@ -809,7 +809,7 @@ function buildRowHelpText(row, moveMode) {
         return 'A add slot  ESC lines';
     }
 
-    return '↑↓ select row  A add  ←→ switch module  E edit module  Enter move module  D delete  ESC lines';
+    return '↑↓ select row  A add after  ←→ switch module  E edit module  Enter move module  D delete  ESC lines';
 }
 
 function buildPreviewSettings(settings, lineIndex, lineItems) {
