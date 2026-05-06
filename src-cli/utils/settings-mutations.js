@@ -38,11 +38,12 @@ export function removePromptLine(settings, lineIndex) {
     };
 }
 
-export function addPromptItem(settings, lineIndex, insertAfterIndex, type) {
+export function addPromptItem(settings, lineIndex, insertAfterIndex, type, patch = {}) {
     const next = cloneSettings(settings);
     const line = next.prompt.lines[lineIndex] || [];
     const insertIndex = clamp(insertAfterIndex + 1, 0, line.length);
     const item = createDefaultPromptItem(type);
+    Object.assign(item, patch);
 
     line.splice(insertIndex, 0, item);
     next.prompt.lines[lineIndex] = line;

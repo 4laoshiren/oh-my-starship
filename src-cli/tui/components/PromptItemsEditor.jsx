@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TitledBox } from '@mishieck/ink-titled-box';
 
-import { MODULE_ORDER, MODULE_SCHEMAS, SEPARATOR_PRESETS } from '../../types/settings.js';
+import { MODULE_ORDER, MODULE_SCHEMAS } from '../../types/settings.js';
 import {
     addPromptItem,
     addPromptLine,
@@ -23,6 +23,20 @@ const MAX_VIEWPORT_ROWS = 12;
 const VIEWPORT_RESERVED_ROWS = 22;
 const CONTENT_TEXT_KEY = 'content:text';
 const CONTENT_FRAME_KEY = 'content:frame';
+const PICKER_CONTENT = 'content';
+const PICKER_FRAME = 'frame';
+const FRAME_CUSTOM_KEY = 'frame:custom';
+const FRAME_PRESETS = new Map([
+    ['Round Right', ''],
+    ['Triangle Right', ''],
+    ['Thin Round Right', ''],
+    ['Thin Triangle Right', ''],
+    ['Round Left', ''],
+    ['Triangle Left', ''],
+    ['Thin Round Left', ''],
+    ['Thin Triangle Left', ''],
+]);
+const LEFT_FACING_FRAME_GLYPHS = new Set(['', '', '', '']);
 
 function LayoutEditor({
     settings,
@@ -49,6 +63,9 @@ function LayoutEditor({
     const moveMode = Boolean(moveDraft);
     const activeLineItems = moveDraft?.lineItems || lines[safeSelectedLineIndex] || [];
     const contentPickerCatalog = useMemo(() => buildContentPickerCatalog(settings), [settings]);
+    const framePickerCatalog = useMemo(() => buildFramePickerCatalog(), []);
+    const activePickerCatalog =
+        picker?.mode === PICKER_FRAME ? framePickerCatalog : contentPickerCatalog;
     const rows = useMemo(
         () => buildLayoutRows(settings, safeSelectedLineIndex, activeLineItems),
         [activeLineItems, safeSelectedLineIndex, settings]
@@ -61,8 +78,8 @@ function LayoutEditor({
     const selectedRow = rows[activeSelectedRowIndex] || null;
     const listViewportRows = resolveViewportRowCount(terminalHeight);
     const selectedPickerEntry = picker
-        ? contentPickerCatalog.entries.find((entry) => entry.key === picker.selectedEntryKey) ||
-          contentPickerCatalog.entries[0] ||
+        ? activePickerCatalog.entries.find((entry) => entry.key === picker.selectedEntryKey) ||
+          activePickerCatalog.entries[0] ||
           null
         : null;
 
@@ -90,7 +107,7 @@ function LayoutEditor({
 
     const helpText = useMemo(() => {
         if (picker) {
-            return '↑↓ select content  Enter apply  ESC cancel';
+            return buildPickerHelpText(picker);
         }
 
         if (moveMode) {
@@ -166,7 +183,7 @@ function LayoutEditor({
             ) : picker ? (
                 <PickerView
                     picker={picker}
-                    entries={contentPickerCatalog.entries}
+                    entries={activePickerCatalog.entries}
                     selectedPickerEntry={selectedPickerEntry}
                     viewportRows={listViewportRows}
                 />
@@ -214,8 +231,13 @@ function LayoutEditor({
     }
 
     function handlePickerInput(input, key) {
+        if (picker?.customInput) {
+            handleFrameCustomInput(input, key);
+            return;
+        }
+
         if (key.escape) {
-            setPicker(null);
+            closePickerStep();
             return;
         }
 
@@ -232,7 +254,7 @@ function LayoutEditor({
             setPicker((previous) => ({
                 ...previous,
                 selectedEntryKey: getAdjacentValue(
-                    contentPickerCatalog.entries.map((entry) => entry.key),
+                    activePickerCatalog.entries.map((entry) => entry.key),
                     previous.selectedEntryKey,
                     step
                 ),
@@ -240,9 +262,67 @@ function LayoutEditor({
         }
     }
 
+    function handleFrameCustomInput(input, key) {
+        if (key.escape) {
+            setPicker((previous) => ({
+                ...previous,
+                customInput: false,
+                customFrameBuffer: '',
+                selectedEntryKey: FRAME_CUSTOM_KEY,
+            }));
+            return;
+        }
+
+        if (key.return) {
+            const glyph = picker.customFrameBuffer || '';
+            if (glyph.length > 0) {
+                applyFrameSelection({
+                    glyph,
+                    invert: shouldAutoInvertFrameGlyph(glyph),
+                });
+            }
+            return;
+        }
+
+        if (key.backspace || key.delete) {
+            setPicker((previous) => ({
+                ...previous,
+                customFrameBuffer: (previous.customFrameBuffer || '').slice(0, -1),
+            }));
+            return;
+        }
+
+        if (input) {
+            setPicker((previous) => ({
+                ...previous,
+                customFrameBuffer: `${previous.customFrameBuffer || ''}${input}`,
+            }));
+        }
+    }
+
     function applyPickerSelection(entry) {
         if (!entry) {
             setPicker(null);
+            return;
+        }
+
+        if (picker?.mode === PICKER_CONTENT && entry.itemType === 'frame') {
+            openFramePicker();
+            return;
+        }
+
+        if (picker?.mode === PICKER_FRAME) {
+            if (entry.itemType === 'customFrame') {
+                setPicker((previous) => ({
+                    ...previous,
+                    customInput: true,
+                    customFrameBuffer: '',
+                    selectedEntryKey: FRAME_CUSTOM_KEY,
+                }));
+                return;
+            }
+
+            applyFrameSelection(entry);
             return;
         }
 
@@ -289,6 +369,74 @@ function LayoutEditor({
             entry.itemType === 'module' && entry.moduleKey ? { module: entry.moduleKey } : {}
         );
         commitSettings(nextSettings, { itemIndex: selectedRow.itemIndex });
+        setPicker(null);
+    }
+
+    function applyFrameSelection(entry) {
+        const glyph = entry?.glyph;
+        if (typeof glyph !== 'string' || glyph.length === 0) {
+            return;
+        }
+
+        const patch = {
+            glyph,
+            invert: Boolean(entry.invert),
+        };
+
+        if (picker?.action === 'add') {
+            const result = addPromptItem(
+                settings,
+                safeSelectedLineIndex,
+                picker.insertAfterItemIndex,
+                'frame',
+                patch
+            );
+            commitSettings(result.settings, { itemIndex: result.itemIndex });
+            setPicker(null);
+            return;
+        }
+
+        if (!selectedRow) {
+            setPicker(null);
+            return;
+        }
+
+        const nextSettings = replacePromptItem(
+            settings,
+            safeSelectedLineIndex,
+            selectedRow.itemIndex,
+            'frame',
+            patch
+        );
+        commitSettings(nextSettings, { itemIndex: selectedRow.itemIndex });
+        setPicker(null);
+    }
+
+    function openFramePicker() {
+        setPicker((previous) => ({
+            ...previous,
+            mode: PICKER_FRAME,
+            selectedEntryKey: getDefaultPickerSelection(
+                framePickerCatalog,
+                resolveFramePickerKey(selectedRow?.item)
+            ),
+            customInput: false,
+            customFrameBuffer: '',
+        }));
+    }
+
+    function closePickerStep() {
+        if (picker?.mode === PICKER_FRAME) {
+            setPicker((previous) => ({
+                ...previous,
+                mode: PICKER_CONTENT,
+                selectedEntryKey: CONTENT_FRAME_KEY,
+                customInput: false,
+                customFrameBuffer: '',
+            }));
+            return;
+        }
+
         setPicker(null);
     }
 
@@ -466,11 +614,14 @@ function LayoutEditor({
     function openAddPicker() {
         setPicker({
             action: 'add',
-            selectedEntryKey: getDefaultContentSelection(
+            mode: PICKER_CONTENT,
+            selectedEntryKey: getDefaultPickerSelection(
                 contentPickerCatalog,
                 resolveContentPickerKey(selectedRow?.item)
             ),
             insertAfterItemIndex: selectedRow ? selectedRow.itemIndex : -1,
+            customInput: false,
+            customFrameBuffer: '',
         });
     }
 
@@ -481,11 +632,14 @@ function LayoutEditor({
 
         setPicker({
             action: 'change',
-            selectedEntryKey: getDefaultContentSelection(
+            mode: PICKER_CONTENT,
+            selectedEntryKey: getDefaultPickerSelection(
                 contentPickerCatalog,
                 resolveContentPickerKey(row.item)
             ),
             insertAfterItemIndex: row.itemIndex,
+            customInput: false,
+            customFrameBuffer: '',
         });
     }
 }
@@ -592,6 +746,23 @@ function LayoutRow({ row, selected, moveMode }) {
 }
 
 function PickerView({ picker, entries, selectedPickerEntry, viewportRows }) {
+    if (picker.customInput) {
+        return (
+            <Box marginTop={1} flexDirection="column">
+                <Text dimColor>Type a custom frame glyph, then press Enter.</Text>
+                <Text color="cyan">
+                    frame: {formatVisibleGlyph(picker.customFrameBuffer || '')}
+                    <Text inverse> </Text>
+                </Text>
+                <Box marginTop={1} paddingLeft={2}>
+                    <Text dimColor wrap="truncate-end">
+                        Paste or type any separator glyph. ESC returns to the frame presets.
+                    </Text>
+                </Box>
+            </Box>
+        );
+    }
+
     const visibleItemCount = Math.max(1, viewportRows - 2);
     const selectedEntryIndex = Math.max(
         0,
@@ -601,11 +772,7 @@ function PickerView({ picker, entries, selectedPickerEntry, viewportRows }) {
 
     return (
         <Box marginTop={1} flexDirection="column">
-            <Text dimColor>
-                {picker.action === 'add'
-                    ? 'Add content into current line.'
-                    : 'Select content for current slot.'}
-            </Text>
+            <Text dimColor>{buildPickerTitle(picker)}</Text>
             {entries.length === 0 ? (
                 <Text dimColor>No content options available.</Text>
             ) : (
@@ -809,7 +976,31 @@ function buildRowHelpText(row, moveMode) {
         return 'A add slot  ESC lines';
     }
 
-    return '↑↓ select row  A add after  ←→ switch module  E edit module  Enter move module  D delete  ESC lines';
+    return '↑↓ select row  A add after  ←→ change type  E edit slot  Enter move slot  D delete  ESC lines';
+}
+
+function buildPickerHelpText(picker) {
+    if (picker?.customInput) {
+        return 'Type custom frame  Enter apply  Backspace delete  ESC presets';
+    }
+
+    if (picker?.mode === PICKER_FRAME) {
+        return '↑↓ select frame  Enter apply  ESC content';
+    }
+
+    return '↑↓ select content  Enter select  ESC cancel';
+}
+
+function buildPickerTitle(picker) {
+    if (picker.mode === PICKER_FRAME) {
+        return picker.action === 'add'
+            ? 'Choose a frame glyph to add into current line.'
+            : 'Choose a frame glyph for current slot.';
+    }
+
+    return picker.action === 'add'
+        ? 'Add content into current line.'
+        : 'Select content for current slot.';
 }
 
 function buildPreviewSettings(settings, lineIndex, lineItems) {
@@ -870,7 +1061,7 @@ function buildContentPickerCatalog(settings) {
                 tokenLabel: null,
                 itemType: 'frame',
                 description:
-                    'Visible separator glyph with colors inherited from the slots beside it.',
+                    'Open frame presets and custom glyph input before inserting a separator.',
             },
             ...collectModuleKeys(settings).map((moduleKey) => ({
                 key: `module:${moduleKey}`,
@@ -880,6 +1071,30 @@ function buildContentPickerCatalog(settings) {
                 moduleKey,
                 description: `Insert the ${MODULE_SCHEMAS[moduleKey]?.label || humanizeModuleKey(moduleKey)} module in this slot.`,
             })),
+        ],
+    };
+}
+
+function buildFramePickerCatalog() {
+    return {
+        entries: [
+            ...Array.from(FRAME_PRESETS, ([label, glyph], index) => ({
+                key: `frame:${index}:${glyph}`,
+                label,
+                tokenLabel: formatVisibleGlyph(glyph),
+                itemType: 'frame',
+                glyph,
+                invert: shouldAutoInvertFrameGlyph(glyph),
+                description:
+                    'Powerline frame glyph. Colors are inherited from the slots beside it.',
+            })),
+            {
+                key: FRAME_CUSTOM_KEY,
+                label: 'Custom Frame',
+                tokenLabel: null,
+                itemType: 'customFrame',
+                description: 'Type or paste your own frame glyph.',
+            },
         ],
     };
 }
@@ -900,7 +1115,7 @@ function collectModuleKeys(settings) {
     );
 }
 
-function getDefaultContentSelection(catalog, preferredKey) {
+function getDefaultPickerSelection(catalog, preferredKey) {
     if (preferredKey && catalog.entries.some((entry) => entry.key === preferredKey)) {
         return preferredKey;
     }
@@ -918,6 +1133,22 @@ function resolveContentPickerKey(item) {
     }
 
     return CONTENT_TEXT_KEY;
+}
+
+function resolveFramePickerKey(item) {
+    if (item?.type !== 'frame' || typeof item.glyph !== 'string') {
+        return null;
+    }
+
+    const foundEntry = buildFramePickerCatalog().entries.find(
+        (entry) => entry.glyph === item.glyph
+    );
+    return foundEntry?.key || FRAME_CUSTOM_KEY;
+}
+
+function shouldAutoInvertFrameGlyph(glyph) {
+    const firstGlyph = Array.from(String(glyph || '').trim())[0] || '';
+    return LEFT_FACING_FRAME_GLYPHS.has(firstGlyph);
 }
 
 function isSameContentSelection(item, entry) {
